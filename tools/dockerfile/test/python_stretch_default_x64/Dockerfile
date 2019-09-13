@@ -1,4 +1,4 @@
-# Copyright 2015 gRPC authors.
+# Copyright 2018 The gRPC Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,46 +65,28 @@ RUN mkdir /var/local/jenkins
 
 
 #=================
-# C++ dependencies
-RUN apt-get update && apt-get -y install libgflags-dev libgtest-dev libc++-dev clang && apt-get clean
+# Compile CPython 3.6.9 from source
 
-#========================
-# Sanity test dependencies
+RUN apt-get update && apt-get install -y zlib1g-dev libssl-dev
+RUN apt-get update && apt-get install -y jq build-essential libffi-dev
+
+RUN cd /tmp && \
+    wget -q https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz && \
+    tar xzvf Python-3.6.9.tgz && \
+    cd Python-3.6.9 && \
+    ./configure && \
+    make install
+
+RUN cd /tmp && \
+    echo "ff7cdaef4846c89c1ec0d7b709bbd54d Python-3.6.9.tgz" > checksum.md5 && \
+    md5sum -c checksum.md5
+
+RUN python3.6 -m ensurepip && \
+    python3.6 -m pip install coverage
+
+
 RUN apt-get update && apt-get -t buster install -y python3.7 python3-all-dev
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3.7
-# Make Python 3.7 the default Python 3 version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
-RUN apt-get update && apt-get install -y \
-      autoconf \
-      automake \
-      libtool \
-      curl \
-      shellcheck
-RUN python2 -m pip install simplejson mako virtualenv lxml
-RUN python3 -m pip install simplejson mako virtualenv lxml
 
-RUN apt-get update && apt-get -y install wget xz-utils
-RUN wget http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
-RUN tar xf clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
-RUN ln -s /clang+llvm-5.0.0-linux-x86_64-ubuntu14.04/bin/clang-format /usr/local/bin/clang-format
-ENV CLANG_FORMAT=clang-format
-RUN ln -s /clang+llvm-5.0.0-linux-x86_64-ubuntu14.04/bin/clang-tidy /usr/local/bin/clang-tidy
-ENV CLANG_TIDY=clang-tidy
-
-#========================
-# Bazel installation
-
-# Must be in sync with tools/bazel
-ENV BAZEL_VERSION 0.28.1
-
-# The correct bazel version is already preinstalled, no need to use //tools/bazel wrapper.
-ENV DISABLE_BAZEL_WRAPPER 1
-
-RUN apt-get update && apt-get install -y wget && apt-get clean
-RUN wget "https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh" && \
-  bash ./bazel-$BAZEL_VERSION-installer-linux-x86_64.sh && \
-  rm bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
-
-
-# Define the default command.
-CMD ["bash"]
+# for Python test coverage reporting
+RUN python3.7 -m pip install coverage
