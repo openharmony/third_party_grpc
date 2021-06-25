@@ -992,7 +992,6 @@ ohos_shared_library("grpc") {
   public_deps = [
     ":gpr",
     "//third_party/abseil-cpp/absl/status:absl_status",
-    "//third_party/abseil-cpp/absl/status:absl_statusor",
     "//third_party/abseil-cpp/absl/strings:absl_cord",
     "//third_party/abseil-cpp/absl/strings:absl_str_format_internal",
     "//third_party/abseil-cpp/absl/strings:absl_strings",
