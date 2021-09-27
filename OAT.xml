@@ -53,9 +53,25 @@ Note:If the text contains special characters, please escape them according to th
 -->
 <configuration>
     <oatconfig>
+        <policylist>
+            <policy name="projectPolicy" desc="">	
+                <policyitem type="compatibility" name="c-ares" path="third_party/cares/ares_build.h" desc="c-ares License"/> 
+            </policy>
+        </policylist>
         <filefilterlist>
             <filefilter name="defaultPolicyFilter" desc="Filters for compatibility，license header policies">
                 <filteritem type="filename" name="PYTHON-MANIFEST.in" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/ios/libgrpc_csharp_ext.a.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x86/grpc_csharp_ext.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Buffers/lib/net45/System.Buffers.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib/net45/Grpc.Core.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux/x64/libgrpc_csharp_ext.so.meta" desc="no license header"/>
+                <filteritem type="filename" name="tools/distrib/python/grpcio_tools/README.rst" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x64/grpc_csharp_ext.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib/net45/System.Runtime.CompilerServices.Unsafe.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux/x86/libgrpc_csharp_ext.so.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Memory/lib/net45/System.Memory.dll.meta" desc="no license header"/>
+                <filteritem type="filename" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib/net45/Grpc.Core.Api.dll.meta" desc="no license header"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
