@@ -60,7 +60,7 @@ Note:If the text contains special characters, please escape them according to th
         </policylist>
         <filefilterlist>
             <filefilter name="binaryFileTypePolicyFilter" desc="Filters for binary file policies" >
-                <filteritem type="filepath" name="./.*" desc="the binary file in third party"/>
+                <filteritem type="filepath" name=".*" desc="the binary file in third party"/>
             </filefilter>
             <filefilter name="defaultPolicyFilter" desc="Filters for compatibility，license header policies">
                 <filteritem type="filepath" name="PYTHON-MANIFEST.in" desc="no license header"/>
