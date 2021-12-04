@@ -176,9 +176,7 @@ ohos_shared_library("gpr") {
     "//third_party/abseil-cpp/absl/time:absl_time",
   ]
   if (current_toolchain != host_toolchain) {
-    external_deps = [
-      "hiviewdfx_hilog_native:libhilog",
-    ]
+    external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
   }
 
   public_configs = [ ":pulbic_grpc_config" ]
@@ -186,6 +184,7 @@ ohos_shared_library("gpr") {
 
   install_enable = true
   subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+  part_name = "${OHOS_PROFILER_PART_NAME}"
 }
 
 ohos_shared_library("grpc") {
@@ -991,18 +990,18 @@ ohos_shared_library("grpc") {
   ]
   public_deps = [
     ":gpr",
+    "third_party/address_sorting:address_sorting",
+    "third_party/cares:ares",
+    "third_party/upb:upb_json",
+    "//third_party/abseil-cpp/absl/base:absl_throw_delegate",
     "//third_party/abseil-cpp/absl/status:absl_status",
     "//third_party/abseil-cpp/absl/strings:absl_cord",
     "//third_party/abseil-cpp/absl/strings:absl_str_format_internal",
     "//third_party/abseil-cpp/absl/strings:absl_strings",
     "//third_party/abseil-cpp/absl/time:absl_time",
-    "//third_party/abseil-cpp/absl/base:absl_throw_delegate",
-    "third_party/address_sorting:address_sorting",
     "//third_party/boringssl:crypto",
     "//third_party/boringssl:ssl",
-    "third_party/cares:ares",
     "//third_party/re2:re2",
-    "third_party/upb:upb_json",
     "//third_party/zlib:libz",
   ]
   public_configs = [ ":pulbic_grpc_config" ]
@@ -1015,6 +1014,7 @@ ohos_shared_library("grpc") {
   ]
   install_enable = true
   subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+  part_name = "${OHOS_PROFILER_PART_NAME}"
 }
 
 ohos_source_set("grpcpp") {
@@ -1299,13 +1299,12 @@ ohos_source_set("grpcpp") {
 }
 
 ohos_shared_library("grpcxx") {
-  deps = [
-    ":grpcpp"
-  ]
+  deps = [ ":grpcpp" ]
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   install_enable = true
   subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+  part_name = "${OHOS_PROFILER_PART_NAME}"
 }
 
 # Only compile the plugin for the host architecture.
@@ -1342,6 +1341,7 @@ if (current_toolchain == host_toolchain) {
     ]
     deps = [ "//third_party/protobuf:protoc_lib" ]
     public_configs = [ ":pulbic_grpc_config" ]
+
     #configs = [ ":private_grpc_config" ]
   }
 }
@@ -1359,5 +1359,6 @@ if (current_toolchain == host_toolchain) {
     public_configs = [ ":pulbic_grpc_config" ]
     configs = [ ":private_grpc_config" ]
     subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+    part_name = "${OHOS_PROFILER_PART_NAME}"
   }
 }

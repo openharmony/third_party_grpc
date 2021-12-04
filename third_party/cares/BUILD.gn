@@ -112,4 +112,5 @@ ohos_shared_library("ares") {
   # print("cares_target_os is $target_os")
   install_enable = true
   subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+  part_name = "${OHOS_PROFILER_PART_NAME}"
 }
