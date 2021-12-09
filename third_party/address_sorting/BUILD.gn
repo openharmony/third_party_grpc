@@ -24,4 +24,5 @@ ohos_shared_library("address_sorting") {
   cflags = [ "-std=c99" ]
   install_enable = true
   subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
+  part_name = "${OHOS_PROFILER_PART_NAME}"
 }
