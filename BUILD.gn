@@ -167,12 +167,9 @@ ohos_shared_library("gpr") {
     "src/core/lib/profiling/timers.h",
   ]
   deps = [
-    "//third_party/abseil-cpp/absl/base:absl_base",
     "//third_party/abseil-cpp/absl/base:absl_throw_delegate",
-    "//third_party/abseil-cpp/absl/status:absl_status",
     "//third_party/abseil-cpp/absl/strings:absl_str_format_internal",
     "//third_party/abseil-cpp/absl/strings:absl_strings",
-    "//third_party/abseil-cpp/absl/synchronization:absl_synchronization",
     "//third_party/abseil-cpp/absl/time:absl_time",
   ]
   if (current_toolchain != host_toolchain) {
@@ -994,8 +991,6 @@ ohos_shared_library("grpc") {
     "third_party/cares:ares",
     "third_party/upb:upb_json",
     "//third_party/abseil-cpp/absl/base:absl_throw_delegate",
-    "//third_party/abseil-cpp/absl/status:absl_status",
-    "//third_party/abseil-cpp/absl/strings:absl_cord",
     "//third_party/abseil-cpp/absl/strings:absl_str_format_internal",
     "//third_party/abseil-cpp/absl/strings:absl_strings",
     "//third_party/abseil-cpp/absl/time:absl_time",
