@@ -41,6 +41,9 @@ class Arena {
  public:
   // A simple arena with no initial memory block and the default allocator.
   Arena() : ptr_(upb_arena_new(), upb_arena_free) {}
+  Arena(char *initial_block, size_t size)
+      : ptr_(upb_arena_init(initial_block, size, &upb_alloc_global),
+             upb_arena_free) {}
 
   upb_arena* ptr() { return ptr_.get(); }
 
@@ -60,6 +63,8 @@ class Arena {
     });
   }
 
+  void Fuse(Arena& other) { upb_arena_fuse(ptr(), other.ptr()); }
+
  private:
   std::unique_ptr<upb_arena, decltype(&upb_arena_free)> ptr_;
 };
@@ -69,15 +74,12 @@ class Arena {
 template <int N>
 class InlinedArena : public Arena {
  public:
-  InlinedArena() : ptr_(upb_arena_new(&initial_block_, N, &upb_alloc_global)) {}
-
-  upb_arena* ptr() { return ptr_.get(); }
+  InlinedArena() : Arena(initial_block_, N) {}
 
  private:
   InlinedArena(const InlinedArena*) = delete;
   InlinedArena& operator=(const InlinedArena*) = delete;
 
-  std::unique_ptr<upb_arena, decltype(&upb_arena_free)> ptr_;
   char initial_block_[N];
 };
 

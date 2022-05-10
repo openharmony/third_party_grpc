@@ -945,9 +945,9 @@ class _Server(grpc.Server):
 
     # pylint: disable=too-many-arguments
     def __init__(self, thread_pool, generic_handlers, interceptors, options,
-                 maximum_concurrent_rpcs, compression):
+                 maximum_concurrent_rpcs, compression, xds):
         completion_queue = cygrpc.CompletionQueue()
-        server = cygrpc.Server(_augment_options(options, compression))
+        server = cygrpc.Server(_augment_options(options, compression), xds)
         server.register_completion_queue(completion_queue)
         self._state = _ServerState(completion_queue, server, generic_handlers,
                                    _interceptor.service_pipeline(interceptors),
@@ -958,11 +958,14 @@ class _Server(grpc.Server):
         _add_generic_handlers(self._state, generic_rpc_handlers)
 
     def add_insecure_port(self, address):
-        return _add_insecure_port(self._state, _common.encode(address))
+        return _common.validate_port_binding_result(
+            address, _add_insecure_port(self._state, _common.encode(address)))
 
     def add_secure_port(self, address, server_credentials):
-        return _add_secure_port(self._state, _common.encode(address),
-                                server_credentials)
+        return _common.validate_port_binding_result(
+            address,
+            _add_secure_port(self._state, _common.encode(address),
+                             server_credentials))
 
     def start(self):
         _start(self._state)
@@ -986,7 +989,7 @@ class _Server(grpc.Server):
 
 
 def create_server(thread_pool, generic_rpc_handlers, interceptors, options,
-                  maximum_concurrent_rpcs, compression):
+                  maximum_concurrent_rpcs, compression, xds):
     _validate_generic_rpc_handlers(generic_rpc_handlers)
     return _Server(thread_pool, generic_rpc_handlers, interceptors, options,
-                   maximum_concurrent_rpcs, compression)
+                   maximum_concurrent_rpcs, compression, xds)

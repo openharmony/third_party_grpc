@@ -42,6 +42,8 @@
 #include <grpcpp/server_context.h>
 #include <grpcpp/support/time.h>
 
+#include "absl/memory/memory.h"
+
 #include "src/core/ext/transport/inproc/inproc_transport.h"
 #include "src/core/lib/iomgr/exec_ctx.h"
 #include "src/core/lib/profiling/timers.h"
@@ -81,12 +83,16 @@ void InitGlobalCallbacks() {
 
 class ShutdownTag : public internal::CompletionQueueTag {
  public:
-  bool FinalizeResult(void** /*tag*/, bool* /*status*/) { return false; }
+  bool FinalizeResult(void** /*tag*/, bool* /*status*/) override {
+    return false;
+  }
 };
 
 class DummyTag : public internal::CompletionQueueTag {
  public:
-  bool FinalizeResult(void** /*tag*/, bool* /*status*/) { return true; }
+  bool FinalizeResult(void** /*tag*/, bool* /*status*/) override {
+    return true;
+  }
 };
 
 class UnimplementedAsyncRequestContext {
@@ -283,10 +289,6 @@ class ShutdownCallback : public grpc_experimental_completion_queue_functor {
 };
 }  // namespace
 
-}  // namespace grpc
-
-namespace grpc_impl {
-
 /// Use private inheritance rather than composition only to establish order
 /// of construction, since the public base class should be constructed after the
 /// elements belonging to the private base class are constructed. This is not
@@ -295,20 +297,15 @@ class Server::UnimplementedAsyncRequest final
     : private grpc::UnimplementedAsyncRequestContext,
       public GenericAsyncRequest {
  public:
-  UnimplementedAsyncRequest(Server* server, grpc::ServerCompletionQueue* cq)
+  UnimplementedAsyncRequest(ServerInterface* server,
+                            grpc::ServerCompletionQueue* cq)
       : GenericAsyncRequest(server, &server_context_, &generic_stream_, cq, cq,
-                            nullptr, false),
-        server_(server),
-        cq_(cq) {}
+                            nullptr, false) {}
 
   bool FinalizeResult(void** tag, bool* status) override;
 
   grpc::ServerContext* context() { return &server_context_; }
   grpc::GenericServerAsyncReaderWriter* stream() { return &generic_stream_; }
-
- private:
-  Server* const server_;
-  grpc::ServerCompletionQueue* const cq_;
 };
 
 /// UnimplementedAsyncResponse should not post user-visible completions to the
@@ -318,8 +315,8 @@ class Server::UnimplementedAsyncResponse final
           grpc::internal::CallOpSendInitialMetadata,
           grpc::internal::CallOpServerSendStatus> {
  public:
-  UnimplementedAsyncResponse(UnimplementedAsyncRequest* request);
-  ~UnimplementedAsyncResponse() { delete request_; }
+  explicit UnimplementedAsyncResponse(UnimplementedAsyncRequest* request);
+  ~UnimplementedAsyncResponse() override { delete request_; }
 
   bool FinalizeResult(void** tag, bool* status) override {
     if (grpc::internal::CallOpSet<
@@ -352,7 +349,7 @@ class Server::SyncRequest final : public grpc::internal::CompletionQueueTag {
     grpc_metadata_array_init(&request_metadata_);
   }
 
-  ~SyncRequest() {
+  ~SyncRequest() override {
     if (call_details_) {
       delete call_details_;
     }
@@ -547,7 +544,7 @@ class Server::CallbackRequest final
   // is nullptr since these services don't have pre-defined methods.
   CallbackRequest(Server* server, grpc::internal::RpcServiceMethod* method,
                   grpc::CompletionQueue* cq,
-                  grpc_core::ServerRegisteredCallAllocation* data)
+                  grpc_core::Server::RegisteredCallAllocation* data)
       : server_(server),
         method_(method),
         has_request_payload_(method->method_type() ==
@@ -555,12 +552,11 @@ class Server::CallbackRequest final
                              method->method_type() ==
                                  grpc::internal::RpcMethod::SERVER_STREAMING),
         cq_(cq),
-        tag_(this) {
-    server->Ref();
-    Setup();
-    data->tag = &tag_;
-    data->call = &call_;
-    data->initial_metadata = &request_metadata_;
+        tag_(this),
+        ctx_(server_->context_allocator() != nullptr
+                 ? server_->context_allocator()->NewCallbackServerContext()
+                 : nullptr) {
+    CommonSetup(server, data);
     data->deadline = &deadline_;
     data->optional_payload = has_request_payload_ ? &request_payload_ : nullptr;
   }
@@ -568,26 +564,31 @@ class Server::CallbackRequest final
   // For generic services, method is nullptr since these services don't have
   // pre-defined methods.
   CallbackRequest(Server* server, grpc::CompletionQueue* cq,
-                  grpc_core::ServerBatchCallAllocation* data)
+                  grpc_core::Server::BatchCallAllocation* data)
       : server_(server),
         method_(nullptr),
         has_request_payload_(false),
+        call_details_(new grpc_call_details),
         cq_(cq),
-        tag_(this) {
-    server->Ref();
-    Setup();
-    data->tag = &tag_;
-    data->call = &call_;
-    data->initial_metadata = &request_metadata_;
-    if (!call_details_) {
-      call_details_ = new grpc_call_details;
-      grpc_call_details_init(call_details_);
-    }
+        tag_(this),
+        ctx_(server_->context_allocator() != nullptr
+                 ? server_->context_allocator()
+                       ->NewGenericCallbackServerContext()
+                 : nullptr) {
+    CommonSetup(server, data);
+    grpc_call_details_init(call_details_);
     data->details = call_details_;
   }
 
-  ~CallbackRequest() {
-    Clear();
+  ~CallbackRequest() override {
+    delete call_details_;
+    grpc_metadata_array_destroy(&request_metadata_);
+    if (has_request_payload_ && request_payload_) {
+      grpc_byte_buffer_destroy(request_payload_);
+    }
+    if (server_->context_allocator() == nullptr || ctx_alloc_by_default_) {
+      delete ctx_;
+    }
     server_->UnrefWithPossibleNotify();
   }
 
@@ -601,7 +602,7 @@ class Server::CallbackRequest final
 
   class CallbackCallTag : public grpc_experimental_completion_queue_functor {
    public:
-    CallbackCallTag(Server::CallbackRequest<ServerContextType>* req)
+    explicit CallbackCallTag(Server::CallbackRequest<ServerContextType>* req)
         : req_(req) {
       functor_run = &CallbackCallTag::StaticRun;
       // Set inlineable to true since this callback is internally-controlled
@@ -640,10 +641,10 @@ class Server::CallbackRequest final
       }
 
       // Bind the call, deadline, and metadata from what we got
-      req_->ctx_.set_call(req_->call_);
-      req_->ctx_.cq_ = req_->cq_;
-      req_->ctx_.BindDeadlineAndMetadata(req_->deadline_,
-                                         &req_->request_metadata_);
+      req_->ctx_->set_call(req_->call_);
+      req_->ctx_->cq_ = req_->cq_;
+      req_->ctx_->BindDeadlineAndMetadata(req_->deadline_,
+                                          &req_->request_metadata_);
       req_->request_metadata_.count = 0;
 
       // Create a C++ Call to control the underlying core call
@@ -652,7 +653,7 @@ class Server::CallbackRequest final
               grpc::internal::Call(
                   req_->call_, req_->server_, req_->cq_,
                   req_->server_->max_receive_message_size(),
-                  req_->ctx_.set_server_rpc_info(
+                  req_->ctx_->set_server_rpc_info(
                       req_->method_name(),
                       (req_->method_ != nullptr)
                           ? req_->method_->method_type()
@@ -666,7 +667,7 @@ class Server::CallbackRequest final
           grpc::experimental::InterceptionHookPoints::
               POST_RECV_INITIAL_METADATA);
       req_->interceptor_methods_.SetRecvInitialMetadata(
-          &req_->ctx_.client_metadata_);
+          &req_->ctx_->client_metadata_);
 
       if (req_->has_request_payload_) {
         // Set interception point for RECV MESSAGE
@@ -692,47 +693,41 @@ class Server::CallbackRequest final
                           ? req_->method_->handler()
                           : req_->server_->generic_handler_.get();
       handler->RunHandler(grpc::internal::MethodHandler::HandlerParameter(
-          call_, &req_->ctx_, req_->request_, req_->request_status_,
+          call_, req_->ctx_, req_->request_, req_->request_status_,
           req_->handler_data_, [this] { delete req_; }));
     }
   };
 
-  void Clear() {
-    if (call_details_) {
-      delete call_details_;
-      call_details_ = nullptr;
-    }
-    grpc_metadata_array_destroy(&request_metadata_);
-    if (has_request_payload_ && request_payload_) {
-      grpc_byte_buffer_destroy(request_payload_);
-    }
-    ctx_.Clear();
-    interceptor_methods_.ClearState();
-  }
-
-  void Setup() {
+  template <class CallAllocation>
+  void CommonSetup(Server* server, CallAllocation* data) {
+    server->Ref();
     grpc_metadata_array_init(&request_metadata_);
-    ctx_.Setup(gpr_inf_future(GPR_CLOCK_REALTIME));
-    request_payload_ = nullptr;
-    request_ = nullptr;
-    handler_data_ = nullptr;
-    request_status_ = grpc::Status();
+    data->tag = &tag_;
+    data->call = &call_;
+    data->initial_metadata = &request_metadata_;
+    if (ctx_ == nullptr) {
+      // TODO(ddyihai): allocate the context with grpc_call_arena_alloc.
+      ctx_ = new ServerContextType();
+      ctx_alloc_by_default_ = true;
+    }
+    ctx_->set_context_allocator(server->context_allocator());
   }
 
   Server* const server_;
   grpc::internal::RpcServiceMethod* const method_;
   const bool has_request_payload_;
-  grpc_byte_buffer* request_payload_;
-  void* request_;
-  void* handler_data_;
+  grpc_byte_buffer* request_payload_ = nullptr;
+  void* request_ = nullptr;
+  void* handler_data_ = nullptr;
   grpc::Status request_status_;
-  grpc_call_details* call_details_ = nullptr;
+  grpc_call_details* const call_details_ = nullptr;
   grpc_call* call_;
   gpr_timespec deadline_;
   grpc_metadata_array request_metadata_;
-  grpc::CompletionQueue* cq_;
+  grpc::CompletionQueue* const cq_;
+  bool ctx_alloc_by_default_ = false;
   CallbackCallTag tag_;
-  ServerContextType ctx_;
+  ServerContextType* ctx_ = nullptr;
   grpc::internal::InterceptorBatchMethodsImpl interceptor_methods_;
 };
 
@@ -749,8 +744,8 @@ bool Server::CallbackRequest<
   if (*status) {
     deadline_ = call_details_->deadline;
     // TODO(yangg) remove the copy here
-    ctx_.method_ = grpc::StringFromCopiedSlice(call_details_->method);
-    ctx_.host_ = grpc::StringFromCopiedSlice(call_details_->host);
+    ctx_->method_ = grpc::StringFromCopiedSlice(call_details_->method);
+    ctx_->host_ = grpc::StringFromCopiedSlice(call_details_->host);
   }
   grpc_slice_unref(call_details_->method);
   grpc_slice_unref(call_details_->host);
@@ -766,7 +761,7 @@ const char* Server::CallbackRequest<grpc::CallbackServerContext>::method_name()
 template <>
 const char* Server::CallbackRequest<
     grpc::GenericCallbackServerContext>::method_name() const {
-  return ctx_.method().c_str();
+  return ctx_->method().c_str();
 }
 
 // Implementation of ThreadManager. Each instance of SyncRequestThreadManager
@@ -838,9 +833,9 @@ class Server::SyncRequestThreadManager : public grpc::ThreadManager {
 
   void AddUnknownSyncMethod() {
     if (!sync_requests_.empty()) {
-      unknown_method_.reset(new grpc::internal::RpcServiceMethod(
+      unknown_method_ = absl::make_unique<grpc::internal::RpcServiceMethod>(
           "unknown", grpc::internal::RpcMethod::BIDI_STREAMING,
-          new grpc::internal::UnknownMethodHandler));
+          new grpc::internal::UnknownMethodHandler);
       sync_requests_.emplace_back(
           new SyncRequest(unknown_method_.get(), nullptr));
     }
@@ -899,6 +894,7 @@ Server::Server(
     int min_pollers, int max_pollers, int sync_cq_timeout_msec,
     std::vector<std::shared_ptr<grpc::internal::ExternalConnectionAcceptorImpl>>
         acceptors,
+    grpc_server_config_fetcher* server_config_fetcher,
     grpc_resource_quota* server_rq,
     std::vector<
         std::unique_ptr<grpc::experimental::ServerInterceptorFactoryInterface>>
@@ -911,7 +907,7 @@ Server::Server(
       shutdown_(false),
       shutdown_notified_(false),
       server_(nullptr),
-      server_initializer_(new grpc_impl::ServerInitializer(this)),
+      server_initializer_(new ServerInitializer(this)),
       health_check_service_disabled_(false) {
   g_gli_initializer.summon();
   gpr_once_init(&grpc::g_once_init_callbacks, grpc::InitGlobalCallbacks);
@@ -962,6 +958,7 @@ Server::Server(
     }
   }
   server_ = grpc_server_create(&channel_args, nullptr);
+  grpc_server_set_config_fetcher(server_, server_config_fetcher);
 }
 
 Server::~Server() {
@@ -981,7 +978,10 @@ Server::~Server() {
       }
     }
   }
-
+  // Destroy health check service before we destroy the C server so that
+  // it does not call grpc_server_request_registered_call() after the C
+  // server has been destroyed.
+  health_check_service_.reset();
   grpc_server_destroy(server_);
 }
 
@@ -1028,7 +1028,7 @@ static grpc_server_register_method_payload_handling PayloadHandlingForMethod(
   GPR_UNREACHABLE_CODE(return GRPC_SRM_PAYLOAD_NONE;);
 }
 
-bool Server::RegisterService(const std::string* host, grpc::Service* service) {
+bool Server::RegisterService(const std::string* addr, grpc::Service* service) {
   bool has_async_methods = service->has_async_methods();
   if (has_async_methods) {
     GPR_ASSERT(service->server_ == nullptr &&
@@ -1039,12 +1039,12 @@ bool Server::RegisterService(const std::string* host, grpc::Service* service) {
   const char* method_name = nullptr;
 
   for (const auto& method : service->methods_) {
-    if (method.get() == nullptr) {  // Handled by generic service if any.
+    if (method == nullptr) {  // Handled by generic service if any.
       continue;
     }
 
     void* method_registration_tag = grpc_server_register_method(
-        server_, method->name(), host ? host->c_str() : nullptr,
+        server_, method->name(), addr ? addr->c_str() : nullptr,
         PayloadHandlingForMethod(method.get()), 0);
     if (method_registration_tag == nullptr) {
       gpr_log(GPR_DEBUG, "Attempt to register %s multiple times",
@@ -1063,9 +1063,9 @@ bool Server::RegisterService(const std::string* host, grpc::Service* service) {
       has_callback_methods_ = true;
       grpc::internal::RpcServiceMethod* method_value = method.get();
       grpc::CompletionQueue* cq = CallbackCQ();
-      grpc_core::SetServerRegisteredMethodAllocator(
-          server_, cq->cq(), method_registration_tag, [this, cq, method_value] {
-            grpc_core::ServerRegisteredCallAllocation result;
+      server_->core_server->SetRegisteredMethodAllocator(
+          cq->cq(), method_registration_tag, [this, cq, method_value] {
+            grpc_core::Server::RegisteredCallAllocation result;
             new CallbackRequest<grpc::CallbackServerContext>(this, method_value,
                                                              cq, &result);
             return result;
@@ -1104,8 +1104,8 @@ void Server::RegisterCallbackGenericService(
   generic_handler_.reset(service->Handler());
 
   grpc::CompletionQueue* cq = CallbackCQ();
-  grpc_core::SetServerBatchMethodAllocator(server_, cq->cq(), [this, cq] {
-    grpc_core::ServerBatchCallAllocation result;
+  server_->core_server->SetBatchMethodAllocator(cq->cq(), [this, cq] {
+    grpc_core::Server::BatchCallAllocation result;
     new CallbackRequest<grpc::GenericCallbackServerContext>(this, cq, &result);
     return result;
   });
@@ -1180,7 +1180,7 @@ void Server::Start(grpc::ServerCompletionQueue** cqs, size_t num_cqs) {
   // service to handle any unimplemented methods using the default reactor
   // creator
   if (has_callback_methods_ && !has_callback_generic_service_) {
-    unimplemented_service_.reset(new grpc::CallbackGenericService);
+    unimplemented_service_ = absl::make_unique<grpc::CallbackGenericService>();
     RegisterCallbackGenericService(unimplemented_service_.get());
   }
 
@@ -1211,8 +1211,8 @@ void Server::Start(grpc::ServerCompletionQueue** cqs, size_t num_cqs) {
   // server CQs), make sure that we have a ResourceExhausted handler
   // to deal with the case of thread exhaustion
   if (sync_server_cqs_ != nullptr && !sync_server_cqs_->empty()) {
-    resource_exhausted_handler_.reset(
-        new grpc::internal::ResourceExhaustedHandler);
+    resource_exhausted_handler_ =
+        absl::make_unique<grpc::internal::ResourceExhaustedHandler>();
   }
 
   for (const auto& value : sync_req_mgrs_) {
@@ -1317,7 +1317,9 @@ bool Server::UnimplementedAsyncRequest::FinalizeResult(void** tag,
   if (GenericAsyncRequest::FinalizeResult(tag, status)) {
     // We either had no interceptors run or we are done intercepting
     if (*status) {
-      new UnimplementedAsyncRequest(server_, cq_);
+      // Create a new request/response pair using the server and CQ values
+      // stored in this object's base class.
+      new UnimplementedAsyncRequest(server_, notification_cq_);
       new UnimplementedAsyncResponse(this);
     } else {
       delete this;
@@ -1358,4 +1360,4 @@ grpc::CompletionQueue* Server::CallbackCQ() {
   return callback_cq_;
 }
 
-}  // namespace grpc_impl
+}  // namespace grpc
