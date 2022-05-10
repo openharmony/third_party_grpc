@@ -84,7 +84,7 @@ class SecurityHandshaker : public Handshaker {
   tsi_handshaker* handshaker_;
   RefCountedPtr<grpc_security_connector> connector_;
 
-  gpr_mu mu_;
+  Mutex mu_;
 
   bool is_shutdown_ = false;
   // Endpoint and read buffer to destroy after a shutdown.
@@ -120,14 +120,12 @@ SecurityHandshaker::SecurityHandshaker(tsi_handshaker* handshaker,
     max_frame_size_ = grpc_channel_arg_get_integer(
         arg, {0, 0, std::numeric_limits<int>::max()});
   }
-  gpr_mu_init(&mu_);
   grpc_slice_buffer_init(&outgoing_);
   GRPC_CLOSURE_INIT(&on_peer_checked_, &SecurityHandshaker::OnPeerCheckedFn,
                     this, grpc_schedule_on_exec_ctx);
 }
 
 SecurityHandshaker::~SecurityHandshaker() {
-  gpr_mu_destroy(&mu_);
   tsi_handshaker_destroy(handshaker_);
   tsi_handshaker_result_destroy(handshaker_result_);
   if (endpoint_to_destroy_ != nullptr) {
@@ -241,8 +239,8 @@ void SecurityHandshaker::OnPeerCheckedInner(grpc_error* error) {
       handshaker_result_, &unused_bytes, &unused_bytes_size);
   // Create secure endpoint.
   if (unused_bytes_size > 0) {
-    grpc_slice slice =
-        grpc_slice_from_copied_buffer((char*)unused_bytes, unused_bytes_size);
+    grpc_slice slice = grpc_slice_from_copied_buffer(
+        reinterpret_cast<const char*>(unused_bytes), unused_bytes_size);
     args_->endpoint = grpc_secure_endpoint_create(
         protector, zero_copy_protector, args_->endpoint, &slice, 1);
     grpc_slice_unref_internal(slice);
@@ -499,7 +497,7 @@ class FailHandshaker : public Handshaker {
   }
 
  private:
-  virtual ~FailHandshaker() = default;
+  ~FailHandshaker() override = default;
 };
 
 //

@@ -146,7 +146,8 @@ static void combiner_exec(grpc_core::Combiner* lock, grpc_closure* cl,
     // offload for one or two actions, and that's fine
     gpr_atm initiator =
         gpr_atm_no_barrier_load(&lock->initiating_exec_ctx_or_null);
-    if (initiator != 0 && initiator != (gpr_atm)grpc_core::ExecCtx::Get()) {
+    if (initiator != 0 &&
+        initiator != reinterpret_cast<gpr_atm>(grpc_core::ExecCtx::Get())) {
       gpr_atm_no_barrier_store(&lock->initiating_exec_ctx_or_null, 0);
     }
   }
@@ -180,17 +181,6 @@ static void queue_offload(grpc_core::Combiner* lock) {
 
 bool grpc_combiner_continue_exec_ctx() {
   GPR_TIMER_SCOPE("combiner.continue_exec_ctx", 0);
-
-  GRPC_COMBINER_TRACE(gpr_log(GPR_INFO,
-    "grpc_core::ExecCtx::Get() = %p "
-    "grpc_core::ExecCtx::Get()->combiner_data() = %p ",
-    grpc_core::ExecCtx::Get(),
-    grpc_core::ExecCtx::Get()->combiner_data()));
-
-  if (grpc_core::ExecCtx::Get() == nullptr) {
-    return false;
-  }
-
   grpc_core::Combiner* lock =
       grpc_core::ExecCtx::Get()->combiner_data()->active_combiner;
   if (lock == nullptr) {
