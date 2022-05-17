@@ -16,7 +16,7 @@ import("//build/ohos.gni")
 config("upb_config") {
   include_dirs = [
     ".",
-    "generated_for_cmake",
+    "./cmake",
   ]
 }
 
@@ -55,9 +55,7 @@ source_set("upb") {
 }
 
 source_set("fastdecode") {
-  sources = [
-    "upb/msg.h",
-  ]
+  sources = [ "upb/msg.h" ]
   public_configs = [ ":upb_config" ]
   deps = [
     ":port",
@@ -161,9 +159,7 @@ source_set("upb_pb") {
 }
 
 source_set("upb_json") {
-  sources = [
-    "upb/json/printer.c",
-  ]
+  sources = [ "upb/json/printer.c" ]
   public_configs = [ ":upb_config" ]
   deps = [
     ":handlers",

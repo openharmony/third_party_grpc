@@ -334,6 +334,7 @@ cdef extern from "grpc/grpc.h":
     grpc_op_data data
 
   void grpc_init() nogil
+  void grpc_shutdown() nogil
   void grpc_shutdown_blocking() nogil
   int grpc_is_initialized() nogil
 
@@ -396,6 +397,16 @@ cdef extern from "grpc/grpc.h":
   void grpc_server_register_completion_queue(grpc_server *server,
                                              grpc_completion_queue *cq,
                                              void *reserved) nogil
+
+  ctypedef struct grpc_server_config_fetcher:
+    pass
+
+  void grpc_server_set_config_fetcher(
+       grpc_server* server, grpc_server_config_fetcher* config_fetcher) nogil
+
+  grpc_server_config_fetcher* grpc_server_config_fetcher_xds_create() nogil
+
+
   int grpc_server_add_insecure_http2_port(
       grpc_server *server, const char *addr) nogil
   void grpc_server_start(grpc_server *server) nogil
@@ -504,7 +515,7 @@ cdef extern from "grpc/grpc_security.h":
   void grpc_set_ssl_roots_override_callback(
       grpc_ssl_roots_override_callback cb) nogil
 
-  grpc_channel_credentials *grpc_google_default_credentials_create() nogil
+  grpc_channel_credentials *grpc_google_default_credentials_create(grpc_call_credentials* call_credentials) nogil
   grpc_channel_credentials *grpc_ssl_credentials_create(
       const char *pem_root_certs, grpc_ssl_pem_key_cert_pair *pem_key_cert_pair,
       verify_peer_options *verify_options, void *reserved) nogil
@@ -512,6 +523,16 @@ cdef extern from "grpc/grpc_security.h":
       grpc_channel_credentials *creds1, grpc_call_credentials *creds2,
       void *reserved) nogil
   void grpc_channel_credentials_release(grpc_channel_credentials *creds) nogil
+
+  grpc_channel_credentials *grpc_xds_credentials_create(
+      grpc_channel_credentials *fallback_creds) nogil
+
+  grpc_channel_credentials *grpc_insecure_credentials_create() nogil
+
+  grpc_server_credentials *grpc_xds_server_credentials_create(
+      grpc_server_credentials *fallback_creds) nogil
+
+  grpc_server_credentials *grpc_insecure_server_credentials_create() nogil
 
   grpc_call_credentials *grpc_composite_call_credentials_create(
       grpc_call_credentials *creds1, grpc_call_credentials *creds2,

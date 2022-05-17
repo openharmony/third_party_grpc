@@ -22,15 +22,18 @@
 #include <grpc/support/port_platform.h>
 
 #include <grpc/status.h>
+
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
+
 #include "opencensus/context/context.h"
 #include "opencensus/tags/tag_map.h"
 #include "opencensus/trace/context_util.h"
 #include "opencensus/trace/span.h"
 #include "opencensus/trace/span_context.h"
 #include "opencensus/trace/trace_params.h"
+
 #include "src/core/lib/slice/slice_internal.h"
 #include "src/cpp/common/channel_filter.h"
 #include "src/cpp/ext/filters/census/rpc_encoding.h"
@@ -93,9 +96,8 @@ size_t ServerStatsDeserialize(const char* buf, size_t buf_size,
 // Deserialize the incoming SpanContext and generate a new server context based
 // on that. This new span will never be a root span. This should only be called
 // with a blank CensusContext as it overwrites it.
-void GenerateServerContext(absl::string_view tracing, absl::string_view stats,
-                           absl::string_view primary_role,
-                           absl::string_view method, CensusContext* context);
+void GenerateServerContext(absl::string_view tracing, absl::string_view method,
+                           CensusContext* context);
 
 // Creates a new client context that is by default a new root context.
 // If the current context is the default context then the newly created

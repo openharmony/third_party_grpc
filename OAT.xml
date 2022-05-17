@@ -56,6 +56,7 @@ Note:If the text contains special characters, please escape them according to th
         <policylist>
             <policy name="projectPolicy" desc="">	
                 <policyitem type="compatibility" name="c-ares" path="third_party/cares/ares_build.h" desc="c-ares License"/> 
+                <policyitem type="compatibility" name="c-ares" path="third_party/upb/third_party/wyhash/wyhash.h" desc="c-ares License"/>
             </policy>
         </policylist>
         <filefilterlist>
@@ -65,16 +66,73 @@ Note:If the text contains special characters, please escape them according to th
             <filefilter name="defaultPolicyFilter" desc="Filters for compatibility，license header policies">
                 <filteritem type="filepath" name="PYTHON-MANIFEST.in" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/ios/libgrpc_csharp_ext.a.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core.Testing/Grpc.Core.Testing.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x64.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x86.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Buffers/lib.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/android.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Buffers/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib/net45/System.Runtime.CompilerServices.Unsafe.xml.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Buffers/lib/net45/System.Buffers.xml.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/ios.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux/x64.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/osx/x64.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib/net45/Grpc.Core.Api.pdb.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/osx/x64/grpc_csharp_ext.bundle.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib/net45/Grpc.Core.Api.xml.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib/net45/Grpc.Core.pdb.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib/net45/Grpc.Core.xml.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/osx.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Memory/lib.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Memory/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/android/armeabi-v7a.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib/net45.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Memory/lib/net45/System.Memory.xml.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x86/grpc_csharp_ext.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Buffers/lib/net45/System.Buffers.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/lib/net45/Grpc.Core.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux/x64/libgrpc_csharp_ext.so.meta" desc="no license header"/>
-                <filteritem type="filepath" name="tools/distrib/python/grpcio_tools/README.rst" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/win/x64/grpc_csharp_ext.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Runtime.CompilerServices.Unsafe/lib/net45/System.Runtime.CompilerServices.Unsafe.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core/runtimes/linux/x86/libgrpc_csharp_ext.so.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/System.Memory/lib/net45/System.Memory.dll.meta" desc="no license header"/>
                 <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib/net45/Grpc.Core.Api.dll.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core.Testing/Grpc.Core.Testing.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core.Xamarin/Grpc.Core.Xamarin.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Auth/Grpc.Auth.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core.NativeDebug/Grpc.Core.NativeDebug.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Tools/Grpc.Tools.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.HealthCheck/Grpc.HealthCheck.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core.Api/Grpc.Core.Api.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc/Grpc.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Core/Grpc.Core.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/Grpc.Reflection/Grpc.Reflection.csproj" desc="no license header"/>
+                <filteritem type="filepath" name="src/csharp/unitypackage/unitypackage_skeleton/Plugins/Grpc.Core.Api/lib.meta" desc="no license header"/>
+                <filteritem type="filepath" name="src/ruby/tools/grpc-tools.gemspec" desc="no license header"/>
+                <filteritem type="filepath" name="src/ruby/tools/grpc-tools.gemspec" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/third_party/wyhash/wyhash.h" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/tests/bindings/lua/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/upbc/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/examples/bazel/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/tests/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/cmake/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/upb/bindings/lua/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/benchmarks/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="third_party/upb/third_party/wyhash/BUILD" desc="no license header"/>
+                <filteritem type="filepath" name="templates/tools/dockerfile/java_deps.include" desc="no license header"/>
+                <filteritem type="filepath" name="templates/tools/dockerfile/cmake.include" desc="no license header"/>
+                <filteritem type="filepath" name="tools/distrib/python/grpcio_tools/README.rst" desc="no license header"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
