@@ -34,7 +34,6 @@ struct iovec {
   size_t iov_len;
 };
 #endif
-
 /**
  * A gsec interface for AEAD encryption schemes. The API is thread-compatible.
  * Each implementation of this interface should specify supported values for
