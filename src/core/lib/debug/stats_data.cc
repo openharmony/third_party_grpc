@@ -281,8 +281,8 @@ const char* grpc_stats_histogram_doc[GRPC_STATS_HISTOGRAM_COUNT] = {
     "Number of streams terminated per TCP write",
     "Number of flow control updates written per TCP write",
     // NOLINTNEXTLINE(bugprone-suspicious-missing-comma)
-    "How many completion queues were checked looking for a CQ that had "
-    "requested the incoming call",
+    "How many completion queues were checked looking for a CQ that had " \
+    "requested the incoming call"
 };
 const int grpc_stats_table_0[65] = {
     0,      1,      2,      3,      4,     5,     7,     9,     11,    14,
