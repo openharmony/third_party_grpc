@@ -1231,8 +1231,8 @@ ohos_shared_library("grpc") {
     "//third_party/abseil-cpp/absl/strings:absl_str_format_internal",
     "//third_party/abseil-cpp/absl/strings:absl_strings",
     "//third_party/abseil-cpp/absl/time:absl_time",
-    "//third_party/boringssl:crypto",
-    "//third_party/boringssl:ssl",
+    "//third_party/openssl:libcrypto_shared",
+    "//third_party/openssl:libssl_shared",
     "//third_party/re2:re2",
     "//third_party/zlib:libz",
   ]
