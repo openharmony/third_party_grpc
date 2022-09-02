@@ -181,6 +181,9 @@ static void queue_offload(grpc_core::Combiner* lock) {
 
 bool grpc_combiner_continue_exec_ctx() {
   GPR_TIMER_SCOPE("combiner.continue_exec_ctx", 0);
+  if (grpc_core::ExecCtx::Get() == nullptr) {
+    return false;
+  }
   grpc_core::Combiner* lock =
       grpc_core::ExecCtx::Get()->combiner_data()->active_combiner;
   if (lock == nullptr) {
