@@ -66,8 +66,8 @@ ChannelArguments::ChannelArguments(const ChannelArguments& other)
 }
 
 ChannelArguments::~ChannelArguments() {
-  grpc_core::ExecCtx exec_ctx;
   for (auto& arg : args_) {
+    grpc_core::ExecCtx exec_ctx;
     if (arg.type == GRPC_ARG_POINTER) {
       arg.value.pointer.vtable->destroy(arg.value.pointer.p);
     }
