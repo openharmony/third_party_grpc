@@ -49,6 +49,7 @@ config("private_grpc_config") {
     "-Wno-sign-compare",
     "-Wno-shadow-uncaptured-local",
   ]
+  defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
 }
 
 ohos_shared_library("gpr") {
