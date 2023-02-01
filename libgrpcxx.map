@@ -16,6 +16,8 @@
     "grpc::ServerBuilder::RegisterService(grpc::Service*)";
     "grpc::ServerBuilder::BuildAndStart()";
     "grpc::ServerBuilder::~ServerBuilder()";
+    "grpc::ServerContextBase::ServerContextBase()";
+    "grpc::ServerContextBase::~ServerContextBase()";
   };
   local:
     *;
