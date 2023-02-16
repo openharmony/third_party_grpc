@@ -184,6 +184,10 @@
     "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__h::basic_string_view<char, std::__h::char_traits<char> >, grpc_error**)";
     "grpc_core::Server::SetRegisteredMethodAllocator(grpc_completion_queue*, void*, std::__h::function<grpc_core::Server::RegisteredCallAllocation ()>)";
     "grpc_core::Server::SetBatchMethodAllocator(grpc_completion_queue*, std::__h::function<grpc_core::Server::BatchCallAllocation ()>)";
+    "grpc_core::Json::Parse(std::__1::basic_string_view<char, std::__1::char_traits<char> >, grpc_error**)";
+    "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__1::basic_string_view<char, std::__1::char_traits<char> >, grpc_error**)";
+    "grpc_core::Server::SetRegisteredMethodAllocator(grpc_completion_queue*, void*, std::__1::function<grpc_core::Server::RegisteredCallAllocation ()>)";
+    "grpc_core::Server::SetBatchMethodAllocator(grpc_completion_queue*, std::__1::function<grpc_core::Server::BatchCallAllocation ()>)";
   };
   local:
     *;

@@ -1236,7 +1236,9 @@ ohos_shared_library("grpc") {
     "//third_party/re2:re2",
     "//third_party/zlib:libz",
   ]
-  version_script = "libgrpc.map"
+  if (!is_asan) {
+    version_script = "libgrpc.map"
+  }
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   include_dirs = [
@@ -1513,7 +1515,9 @@ ohos_source_set("grpcpp") {
 
 ohos_shared_library("grpcxx") {
   deps = [ ":grpcpp" ]
-  version_script = "libgrpcxx.map"
+  if (!is_asan) {
+    version_script = "libgrpcxx.map"
+  }
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   install_enable = true
