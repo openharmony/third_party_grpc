@@ -18,7 +18,10 @@
     "grpc::ServerBuilder::~ServerBuilder()";
     "grpc::ServerContextBase::ServerContextBase()";
     "grpc::ServerContextBase::~ServerContextBase()";
+    "grpc::CreateChannel(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::shared_ptr<grpc::ChannelCredentials> const&)";
+    "grpc::ServerBuilder::AddListeningPort(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::shared_ptr<grpc::ServerCredentials>, int*)";
   };
   local:
     *;
 };
+
