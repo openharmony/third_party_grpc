@@ -154,7 +154,7 @@
     "grpc_resource_user_create(grpc_resource_quota*, char const*)";
     "grpc_resource_user_unref(grpc_resource_user*)";
     "grpc_cq_internal_unref(grpc_completion_queue*)";
-    "grpc_core::Json::Parse(std::__h::basic_string_view<char, std::__h::char_traits<char> >, grpc_error**)";
+    "grpc_core::Json::Parse(std::__h::basic_string_view<char, std::__h::char_traits<char>>, grpc_error**)";
     "grpc_json_get_string_property(grpc_core::Json const&, char const*, grpc_error**)";
     "grpc_load_file(char const*, int, grpc_slice*)";
     "grpc_error_string(grpc_error*)";
@@ -181,11 +181,11 @@
     "grpc_channel_init_register_stage(grpc_channel_stack_type, int, bool (*)(grpc_channel_stack_builder*, void*), void*)";
     "grpc_channel_stack_builder_get_channel_arguments(grpc_channel_stack_builder*)";
     "grpc_channel_stack_builder_prepend_filter(grpc_channel_stack_builder*, grpc_channel_filter const*, void (*)(grpc_channel_stack*, grpc_channel_element*, void*), void*)";
-    "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__h::basic_string_view<char, std::__h::char_traits<char> >, grpc_error**)";
+    "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__h::basic_string_view<char, std::__h::char_traits<char>>, grpc_error**)";
     "grpc_core::Server::SetRegisteredMethodAllocator(grpc_completion_queue*, void*, std::__h::function<grpc_core::Server::RegisteredCallAllocation ()>)";
     "grpc_core::Server::SetBatchMethodAllocator(grpc_completion_queue*, std::__h::function<grpc_core::Server::BatchCallAllocation ()>)";
-    "grpc_core::Json::Parse(std::__1::basic_string_view<char, std::__1::char_traits<char> >, grpc_error**)";
-    "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__1::basic_string_view<char, std::__1::char_traits<char> >, grpc_error**)";
+    "grpc_core::Json::Parse(std::__1::basic_string_view<char, std::__1::char_traits<char>>, grpc_error**)";
+    "grpc_core::ServiceConfig::Create(grpc_channel_args const*, std::__1::basic_string_view<char, std::__1::char_traits<char>>, grpc_error**)";
     "grpc_core::Server::SetRegisteredMethodAllocator(grpc_completion_queue*, void*, std::__1::function<grpc_core::Server::RegisteredCallAllocation ()>)";
     "grpc_core::Server::SetBatchMethodAllocator(grpc_completion_queue*, std::__1::function<grpc_core::Server::BatchCallAllocation ()>)";
   };
