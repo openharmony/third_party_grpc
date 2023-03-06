@@ -48,6 +48,7 @@ config("private_grpc_config") {
     "-Wno-missing-variable-declarations",
     "-Wno-sign-compare",
     "-Wno-shadow-uncaptured-local",
+    "-Wno-deprecated-builtins",
   ]
 }
 
