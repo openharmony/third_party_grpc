@@ -49,7 +49,19 @@ config("private_grpc_config") {
     "-Wno-sign-compare",
     "-Wno-shadow-uncaptured-local",
     "-Wno-deprecated-builtins",
+
+    # In file included from ../../third_party/grpc/src/core/ext/xds/xds_client.cc:39:
+    # In file included from ../../third_party/grpc/src/core/ext/xds/xds_client.h:32:
+    # ../../third_party/grpc/src/core/lib/gprpp/dual_ref_counted.h:173:20: error: unused variable 'weak_refs' [-Werror,-Wunused-variable]
+    #     const uint32_t weak_refs = GetWeakRefs(prev_ref_pair);
+    #                    ^
+    # ../../third_party/grpc/src/core/lib/gprpp/dual_ref_counted.h:195:20: error: unused variable 'weak_refs' [-Werror,-Wunused-variable]
+    #     const uint32_t weak_refs = GetWeakRefs(prev_ref_pair);
+    #                    ^
+    # 2 errors generated.
+    "-Wno-error=unused-variable",
   ]
+  defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
 }
 
 ohos_shared_library("gpr") {
