@@ -3,7 +3,7 @@
 
 Name:          grpc
 Version:       1.41.1
-Release:       3
+Release:       4
 Summary:       A modern, open source high performance RPC framework that can run in any environment
 License:       ASL 2.0
 URL:           https://www.grpc.io
@@ -76,7 +76,8 @@ cmake ../../ -DgRPC_INSTALL=ON\
              -DgRPC_INSTALL_SHAREDIR=%{buildroot}%{_datadir}/%{name} \
              -DgRPC_INSTALL_PKGCONFIGDIR=%{buildroot}%{_libdir}/pkgconfig \
              -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-             -DBUILD_SHARED_LIBS=ON
+             -DBUILD_SHARED_LIBS=ON \
+             -DCMAKE_VERBOSE_MAKEFILE=ON
 make -j24 V=1
 
 # build python module
@@ -137,17 +138,23 @@ cd ../..
 %{python3_sitearch}/grpcio-%{version}-py?.?.egg-info
 
 %changelog
-* Tue Mar 22 2022 gaihuiying <eaglegai@163.com> - 1.41.1-3
+* Thu Oct 20 2022 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-4
 - Type:bugfix
 - ID:NA
 - SUG:NA
-- DESC:delete useless so files
+- DESC: add some secure compilation options
 
-* Fri Feb 11 2022 chengzeruizhi <chengzeruizhi@huawei.com> - 1.41.1-2
+* Sat Apr 16 2022 xingwei<xingwei14@h-partners.com> - 1.41.1-3
 - Type:enhancement
 - ID:NA
 - SUG:NA
 - DESC: remove gflags
+
+* Tue Mar 22 2022 gaihuiying <eaglegai@163.com> - 1.41.1-2
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:delete useless so files
 
 * Mon Dec 27 2021 gaihuiying <gaihuiying1@huawei.com> - 1.41.1-1
 - Type:requirement
@@ -179,7 +186,7 @@ cd ../..
 - SUG:NA
 - DESC:separate re2 from grpc source
 
-* Mon Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
+* Fri Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
 - Type:requirement
 - ID:NA
 - SUG:NA

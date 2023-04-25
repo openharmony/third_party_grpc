@@ -23,7 +23,7 @@ import("//build/ohos.gni")
 import("//developtools/profiler/build/config.gni")
 
 libgrpc_path = rebase_path("//third_party/grpc")
-exec_script("install.sh", [ "$libgrpc_path"])
+exec_script("install.sh", [ "$libgrpc_path" ])
 
 GRPC_DIR = rebase_path("//third_party/grpc//grpc-1.41.1")
 
@@ -31,7 +31,7 @@ config("pulbic_grpc_config") {
   include_dirs = [
     "${GRPC_DIR}/",
     "${GRPC_DIR}/include/",
-    "//third_party/abseil-cpp//abseil-cpp-20210324.2",
+    "//third_party/abseil-cpp//abseil-cpp-20220623.1",
     "//third_party/re2//re2-2021-11-01",
   ]
   defines = [
@@ -180,7 +180,6 @@ source_set("table") {
   deps = [ ":port" ]
 }
 
-
 ohos_shared_library("gpr") {
   sources = [
     "${GRPC_DIR}/include/grpc/impl/codegen/atm.h",
@@ -318,12 +317,12 @@ ohos_shared_library("gpr") {
     "${GRPC_DIR}/third_party/upb/upb/upb.c",
   ]
   public_deps = [
-    "//third_party/abseil-cpp:absl_throw_delegate",
     "//third_party/abseil-cpp:absl_status",
     "//third_party/abseil-cpp:absl_statusor",
     "//third_party/abseil-cpp:absl_str_format_internal",
     "//third_party/abseil-cpp:absl_strings",
     "//third_party/abseil-cpp:absl_sync",
+    "//third_party/abseil-cpp:absl_throw_delegate",
     "//third_party/abseil-cpp:absl_time",
   ]
   if (current_toolchain != host_toolchain) {
@@ -1455,13 +1454,14 @@ ohos_shared_library("grpc") {
     "${GRPC_DIR}/src/core/tsi/transport_security_interface.h",
   ]
   public_deps = [
-    ":gpr",
     ":address_sorting",
+    ":gpr",
     ":upb",
-    "//third_party/abseil-cpp:absl_throw_delegate",
     "//third_party/abseil-cpp:absl_str_format_internal",
     "//third_party/abseil-cpp:absl_strings",
+    "//third_party/abseil-cpp:absl_throw_delegate",
     "//third_party/abseil-cpp:absl_time",
+    "//third_party/abseil-cpp:absl_container",
     "//third_party/openssl:libcrypto_shared",
     "//third_party/openssl:libssl_shared",
     "//third_party/re2:re2",
@@ -1818,9 +1818,9 @@ ohos_source_set("grpcpp") {
     "${GRPC_DIR}/src/cpp/util/time_cc.cc",
   ]
   public_deps = [
+    ":address_sorting",
     ":gpr",
     ":grpc",
-    ":address_sorting",
     "//third_party/protobuf:protobuf_lite",
   ]
   public_configs = [ ":pulbic_grpc_config" ]
