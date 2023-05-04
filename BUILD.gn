@@ -1,12 +1,5 @@
-# GRPC Fuchsia GN build file
 
-# This file has been automatically generated from a template file.
-# Please look at the templates directory instead.
-# This file can be regenerated from the template by running
-# tools/buildgen/generate_projects.sh
-
-# Copyright 2019 gRPC authors.
-#
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -32,7 +25,7 @@ config("pulbic_grpc_config") {
     "${GRPC_DIR}/",
     "${GRPC_DIR}/include/",
     "//third_party/abseil-cpp//abseil-cpp",
-    "//third_party/re2//re2-2021-11-01",
+    "//third_party/re2//re2",
   ]
   defines = [
     "GRPC_USE_PROTO_LITE",
