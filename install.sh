@@ -8,11 +8,12 @@
 
 set -e
 cd $1
-if [ -d "grpc-1.41.1" ];then
-    rm -rf grpc-1.41.1
+if [ -d "grpc" ];then
+    rm -rf grpc
 fi
 tar xvf grpc-1.41.1.tar.gz
-cd $1/grpc-1.41.1
+mv grpc-1.41.1 grpc
+cd $1/grpc
 patch -p1 < $1/src_core_lib_debug.patch
 patch -p1 < $1/src_core_lib_iomgr.patch
 exit 0

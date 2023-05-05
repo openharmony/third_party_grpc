@@ -17,14 +17,14 @@ import("//developtools/profiler/build/config.gni")
 libgrpc_path = rebase_path("//third_party/grpc")
 exec_script("install.sh", [ "$libgrpc_path" ])
 
-GRPC_DIR = rebase_path("//third_party/grpc//grpc-1.41.1")
+GRPC_DIR = rebase_path("//third_party/grpc/grpc")
 
 config("pulbic_grpc_config") {
   include_dirs = [
     "${GRPC_DIR}/",
     "${GRPC_DIR}/include/",
-    "//third_party/abseil-cpp//abseil-cpp",
-    "//third_party/re2//re2",
+    "//third_party/abseil-cpp/abseil-cpp",
+    "//third_party/re2/re2",
   ]
   defines = [
     "GRPC_USE_PROTO_LITE",
