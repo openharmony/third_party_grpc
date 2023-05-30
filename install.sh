@@ -11,8 +11,8 @@ cd $1
 if [ -d "grpc" ];then
     rm -rf grpc
 fi
-tar -zxvf grpc-1.41.1.tar.gz
-mv grpc-1.41.1 grpc
+mkdir grpc
+tar -zxvf grpc-1.41.1.tar.gz --strip-components 1 -C ./grpc
 cd $1/grpc
 patch -p1 < $1/src_core_lib_debug.patch
 patch -p1 < $1/src_core_lib_iomgr.patch
