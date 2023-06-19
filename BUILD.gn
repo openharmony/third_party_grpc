@@ -12,8 +12,8 @@
 # limitations under the License.
 
 import("//build/ohos.gni")
-import("//developtools/profiler/build/config.gni")
-
+THIRDPARTY_GRPC_SUBSYS_NAME = "thirdparty"
+THIRDPARTY_GRPC_PART_NAME = "grpc"
 libgrpc_path = rebase_path("//third_party/grpc")
 exec_script("install.sh", [ "$libgrpc_path" ])
 
@@ -61,8 +61,8 @@ ohos_shared_library("address_sorting") {
   include_dirs = [ "${GRPC_DIR}/third_party/address_sorting/include" ]
   cflags = [ "-std=c99" ]
   install_enable = true
-  subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
-  part_name = "${OHOS_PROFILER_PART_NAME}"
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
 }
 config("upb_config") {
   include_dirs = [
@@ -320,8 +320,8 @@ ohos_shared_library("gpr") {
   ]
 
   install_enable = true
-  subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
-  part_name = "${OHOS_PROFILER_PART_NAME}"
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
 }
 
 ohos_shared_library("grpc") {
@@ -1460,8 +1460,8 @@ ohos_shared_library("grpc") {
     "${GRPC_DIR}/third_party/xxhash",
   ]
   install_enable = true
-  subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
-  part_name = "${OHOS_PROFILER_PART_NAME}"
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
 }
 
 ohos_source_set("grpcpp") {
@@ -1811,6 +1811,8 @@ ohos_source_set("grpcpp") {
     "${GRPC_DIR}/src/core/ext/upb-generated",
     "${GRPC_DIR}/src/core/ext/upbdefs-generated",
   ]
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
 }
 
 ohos_shared_library("grpcxx") {
@@ -1818,8 +1820,8 @@ ohos_shared_library("grpcxx") {
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   install_enable = true
-  subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
-  part_name = "${OHOS_PROFILER_PART_NAME}"
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
 }
 
 # Only compile the plugin for the host architecture.
@@ -1867,13 +1869,13 @@ if (current_toolchain == host_toolchain) {
     sources = [ "${GRPC_DIR}/src/compiler/cpp_plugin.cc" ]
     deps = [
       ":grpc_plugin_support",
-      "//third_party/protobuf:protobuf",
-      "//third_party/protobuf:protobuf_lite",
-      "//third_party/protobuf:protoc_lib",
+      "//third_party/protobuf:protobuf_lite_static",
+      "//third_party/protobuf:protobuf_static",
+      "//third_party/protobuf:protoc_static_lib",
     ]
     public_configs = [ ":pulbic_grpc_config" ]
     configs = [ ":private_grpc_config" ]
-    subsystem_name = "${OHOS_PROFILER_SUBSYS_NAME}"
-    part_name = "${OHOS_PROFILER_PART_NAME}"
+    subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+    part_name = "${THIRDPARTY_GRPC_PART_NAME}"
   }
 }

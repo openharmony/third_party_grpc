@@ -14,12 +14,22 @@
         "subsystem": "thirdparty",
         "syscap": [],
         "features": [],
-        "adapted_system_type": [],
+        "adapted_system_type": [
+            "standard"
+        ],
         "rom": "",
         "ram": "",
         "deps": {
-            "components": [],
-            "third_party": []
+            "components": [
+                "hiviewdfx_hilog_native"
+            ],
+            "third_party": [
+                "abseil_cpp",
+                "openssl",
+                "protobuf",
+                "re2",
+                "zlib"
+            ]
         },
         "build": {
             "sub_component": [],
