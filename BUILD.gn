@@ -308,7 +308,7 @@ ohos_shared_library("gpr") {
     "//third_party/abseil-cpp:absl_time",
   ]
   if (current_toolchain != host_toolchain) {
-    external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
+    external_deps = [ "hilog:libhilog" ]
   }
 
   public_configs = [ ":pulbic_grpc_config" ]
