@@ -28,12 +28,12 @@ config("pulbic_grpc_config") {
     "include/",
     "//third_party/abseil-cpp",
     "//third_party/re2",
-    "//third_party/cares/cares",
   ]
   defines = [
     "GRPC_USE_PROTO_LITE",
     "GPR_SUPPORT_CHANNELS_FROM_FD",
     "PB_FIELD_16BIT",
+    "GRPC_ARES=0",
   ]
 }
 
@@ -1000,7 +1000,6 @@ ohos_shared_library("grpc") {
     "third_party/address_sorting:address_sorting",
     "//third_party/boringssl:crypto",
     "//third_party/boringssl:ssl",
-    "third_party/cares:ares",
     "//third_party/re2:re2",
     "third_party/upb:upb_json",
     "//third_party/zlib:libz",
@@ -1008,7 +1007,6 @@ ohos_shared_library("grpc") {
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   include_dirs = [
-    "//third_party/cares",
     "third_party/address_sorting/include",
     "src/core/ext/upb-generated",
     "src/core/ext/upbdefs-generated",
