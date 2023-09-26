@@ -3,7 +3,7 @@
 
 Name:          grpc
 Version:       1.41.1
-Release:       4
+Release:       5
 Summary:       A modern, open source high performance RPC framework that can run in any environment
 License:       ASL 2.0
 URL:           https://www.grpc.io
@@ -12,6 +12,8 @@ Source0:       https://github.com/grpc/grpc/archive/v%{version}/%{name}-%{versio
 Patch0006:     repair-pkgconfig-path.patch
 Patch0007:     add-secure-compile-option-in-Makefile.patch
 Patch0010:     backport-grpc-1.41.1-python-grpcio-use-system-abseil.patch
+Patch0011:     backport-Ignore-Connection-Aborted-errors-on-accept-29318.patch
+Patch0012:     backport-iomgr-EventEngine-Improve-server-handling-o.patch
 
 BuildRequires: gcc-c++ pkgconfig protobuf-devel protobuf-compiler
 BuildRequires: openssl-devel c-ares-devel gtest-devel zlib-devel gperftools-devel
@@ -138,6 +140,12 @@ cd ../..
 %{python3_sitearch}/grpcio-%{version}-py?.?.egg-info
 
 %changelog
+* Wed Sep 20 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-5
+- Type:CVE
+- ID:CVE-2023-4785
+- SUG:NA
+- DESC:fix CVE-2023-4785
+
 * Thu Oct 20 2022 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-4
 - Type:bugfix
 - ID:NA
