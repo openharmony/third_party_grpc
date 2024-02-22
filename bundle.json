@@ -33,7 +33,29 @@
         },
         "build": {
             "sub_component": [],
-            "inner_kits": [],
+            "inner_kits": [
+                {
+                    "name": "//third_party/grpc:gprc",
+                    "header": {
+                        "header_files": [],
+                        "header_base": ""
+                    }
+                },
+                {
+                    "name": "//third_party/grpc:gprcxx",
+                    "header": {
+                        "header_files": [],
+                        "header_base": ""
+                    }
+                },
+                {
+                    "name": "//third_party/grpc:grpc_cpp_plugin",
+                    "header": {
+                        "header_files": ["cpp_plugin.h"],
+                        "header_base": "//third_party/grpc/grpc/src/compiler/cpp_plugin.cc"
+                    }
+                }
+            ],
             "test": []
         }
     }
