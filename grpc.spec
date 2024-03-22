@@ -3,7 +3,7 @@
 
 Name:          grpc
 Version:       1.41.1
-Release:       5
+Release:       6
 Summary:       A modern, open source high performance RPC framework that can run in any environment
 License:       ASL 2.0
 URL:           https://www.grpc.io
@@ -14,6 +14,7 @@ Patch0007:     add-secure-compile-option-in-Makefile.patch
 Patch0010:     backport-grpc-1.41.1-python-grpcio-use-system-abseil.patch
 Patch0011:     backport-Ignore-Connection-Aborted-errors-on-accept-29318.patch
 Patch0012:     backport-iomgr-EventEngine-Improve-server-handling-o.patch
+Patch0013:     fix-CVE-2023-33953-add-header-limit.patch
 
 BuildRequires: gcc-c++ pkgconfig protobuf-devel protobuf-compiler
 BuildRequires: openssl-devel c-ares-devel gtest-devel zlib-devel gperftools-devel
@@ -140,29 +141,35 @@ cd ../..
 %{python3_sitearch}/grpcio-%{version}-py?.?.egg-info
 
 %changelog
+* Fri Sep 22 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-6
+- Type:CVE
+- ID:CVE-2023-33953
+- SUG:NA
+- DESC:fix CVE-2023-33953
+
 * Wed Sep 20 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-5
 - Type:CVE
 - ID:CVE-2023-4785
 - SUG:NA
 - DESC:fix CVE-2023-4785
 
-* Thu Oct 20 2022 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-4
+* Thu Oct 20 2022 zhouyihang <zhouyihang3@h-partners.com> - 1.41.1-4
 - Type:bugfix
 - ID:NA
 - SUG:NA
-- DESC: add some secure compilation options
+- DESC:add some secure compilation options
 
-* Sat Apr 16 2022 xingwei<xingwei14@h-partners.com> - 1.41.1-3
-- Type:enhancement
-- ID:NA
-- SUG:NA
-- DESC: remove gflags
-
-* Tue Mar 22 2022 gaihuiying <eaglegai@163.com> - 1.41.1-2
+* Tue Mar 22 2022 gaihuiying <eaglegai@163.com> - 1.41.1-3
 - Type:bugfix
 - ID:NA
 - SUG:NA
 - DESC:delete useless so files
+
+* Fri Feb 11 2022 chengzeruizhi <chengzeruizhi@huawei.com> - 1.41.1-2
+- Type:enhancement
+- ID:NA
+- SUG:NA
+- DESC: remove gflags
 
 * Mon Dec 27 2021 gaihuiying <gaihuiying1@huawei.com> - 1.41.1-1
 - Type:requirement
@@ -194,7 +201,7 @@ cd ../..
 - SUG:NA
 - DESC:separate re2 from grpc source
 
-* Fri Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
+* Mon Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
 - Type:requirement
 - ID:NA
 - SUG:NA
