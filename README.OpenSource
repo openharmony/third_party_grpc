@@ -3,7 +3,7 @@
     "Name": "openEuler:grpc",
     "License": "Apache License V2.0",
     "License File": "LICENSE",
-    "Version Number": "1.41.1-4.oe2203sp1",
+    "Version Number": "1.41.1-7.oe2203sp3",
     "Upstream URL": "https://www.openeuler.org",
     "Description": "gRPC is a modern open source high performance Remote Procedure Call (RPC) framework that can run in any environment."
   }
