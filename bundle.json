@@ -52,6 +52,13 @@
                     }
                 },
                 {
+                    "name": "//third_party/grpc:gpr",
+                    "header": {
+                        "header_files": [],
+                        "header_base": ""
+                    }
+                },
+                {
                     "name": "//third_party/grpc:grpc_cpp_plugin",
                     "header": {
                         "header_files": ["cpp_plugin.h"],

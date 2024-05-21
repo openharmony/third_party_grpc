@@ -147,6 +147,7 @@
   "grpc_server_add_insecure_channel_from_fd";
   "grpc_insecure_server_credentials_create";
   "grpc_xds_server_credentials_create";
+  "gpr_set_log_verbosity";
   extern "C++" {
     "grpc_inproc_channel_create(grpc_server*, grpc_channel_args*, void*)";
     "grpc_resource_user_allocate_threads(grpc_resource_user*, int)";
