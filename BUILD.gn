@@ -1446,6 +1446,7 @@ ohos_shared_library("grpc") {
     "//third_party/abseil-cpp:absl_strings",
     "//third_party/abseil-cpp:absl_throw_delegate",
     "//third_party/abseil-cpp:absl_time",
+    "//third_party/abseil-cpp:absl_sync",
     "//third_party/openssl:libcrypto_shared",
     "//third_party/openssl:libssl_shared",
     "//third_party/re2:re2",
