@@ -1805,6 +1805,7 @@ ohos_source_set("grpcpp") {
     ":address_sorting",
     ":gpr",
     ":grpc",
+    ":upb",
   ]
   public_deps = [
     "//third_party/protobuf:protobuf_lite",
