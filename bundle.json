@@ -24,7 +24,9 @@
                 "hilog",
                 "protobuf",
                 "abseil-cpp",
-                "openssl"
+                "openssl",
+                "re2",
+                "zlib"
             ],
             "third_party": [
                 "abseil-cpp",
