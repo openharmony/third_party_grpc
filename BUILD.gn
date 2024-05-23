@@ -298,16 +298,16 @@ ohos_shared_library("gpr") {
     "${GRPC_DIR}/third_party/upb/upb/table.c",
     "${GRPC_DIR}/third_party/upb/upb/upb.c",
   ]
-  public_deps = [
-    "//third_party/abseil-cpp:absl_strings",
-    "//third_party/abseil-cpp:absl_sync",
-    "//third_party/abseil-cpp:absl_throw_delegate",
-    "//third_party/abseil-cpp:absl_time",
-  ]
   external_deps = [
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
+    "abseil-cpp:absl_time",
+    "abseil-cpp:absl_strings",
+    "abseil-cpp:absl_sync",
+    "abseil-cpp:absl_throw_delegate",
+    "abseil-cpp:absl_spinlock_wait",
+    "abseil-cpp:absl_cord",
   ]
 
   if (current_toolchain != host_toolchain) {
@@ -1457,6 +1457,8 @@ ohos_shared_library("grpc") {
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
+    "abseil-cpp:absl_cord",
+    "abseil-cpp:absl_time_zone",
   ]
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
@@ -1837,6 +1839,8 @@ ohos_shared_library("grpcxx") {
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
+    "abseil-cpp:absl_sync",
+    "abseil-cpp:absl_strings",
   ]
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
