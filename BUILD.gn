@@ -299,15 +299,15 @@ ohos_shared_library("gpr") {
     "${GRPC_DIR}/third_party/upb/upb/upb.c",
   ]
   external_deps = [
+    "abseil-cpp:absl_cord",
+    "abseil-cpp:absl_spinlock_wait",
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
-    "abseil-cpp:absl_time",
     "abseil-cpp:absl_strings",
     "abseil-cpp:absl_sync",
     "abseil-cpp:absl_throw_delegate",
-    "abseil-cpp:absl_spinlock_wait",
-    "abseil-cpp:absl_cord",
+    "abseil-cpp:absl_time",
   ]
 
   if (current_toolchain != host_toolchain) {
@@ -1445,20 +1445,20 @@ ohos_shared_library("grpc") {
   ]
   external_deps = [
     "abseil-cpp:absl_container",
+    "abseil-cpp:absl_cord",
+    "abseil-cpp:absl_status",
+    "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
-    "abseil-cpp:absl_throw_delegate",
+    "abseil-cpp:absl_str_format_internal",
     "abseil-cpp:absl_strings",
-    "abseil-cpp:absl_time",
     "abseil-cpp:absl_sync",
+    "abseil-cpp:absl_throw_delegate",
+    "abseil-cpp:absl_time",
+    "abseil-cpp:absl_time_zone",
     "openssl:libcrypto_shared",
     "openssl:libssl_shared",
     "re2:re2",
     "zlib:libz",
-    "abseil-cpp:absl_status",
-    "abseil-cpp:absl_statusor",
-    "abseil-cpp:absl_str_format_internal",
-    "abseil-cpp:absl_cord",
-    "abseil-cpp:absl_time_zone",
   ]
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
@@ -1816,10 +1816,10 @@ ohos_source_set("grpcpp") {
     ":upb",
   ]
   external_deps = [
-    "protobuf:protobuf_lite",
+    "abseil-cpp:absl_sync",
     "openssl:libcrypto_shared",
     "openssl:libssl_shared",
-    "abseil-cpp:absl_sync",
+    "protobuf:protobuf_lite",
   ]
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
@@ -1839,8 +1839,8 @@ ohos_shared_library("grpcxx") {
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
     "abseil-cpp:absl_str_format_internal",
-    "abseil-cpp:absl_sync",
     "abseil-cpp:absl_strings",
+    "abseil-cpp:absl_sync",
   ]
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
