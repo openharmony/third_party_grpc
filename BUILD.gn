@@ -1896,6 +1896,11 @@ if (current_toolchain == host_toolchain) {
       "//third_party/protobuf:protobuf_static",
       "//third_party/protobuf:protoc_static_lib",
     ]
+    external_deps = [
+      "protobuf:protobuf_lite_static",
+      "protobuf:protobuf_static",
+      "protobuf:protoc_static_lib",
+    ]
     public_configs = [ ":pulbic_grpc_config" ]
     configs = [ ":private_grpc_config" ]
     subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"

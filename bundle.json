@@ -28,13 +28,7 @@
                 "re2",
                 "zlib"
             ],
-            "third_party": [
-                "abseil-cpp",
-                "openssl",
-                "protobuf",
-                "re2",
-                "zlib"
-            ]
+            "third_party": []
         },
         "build": {
             "sub_component": [],
