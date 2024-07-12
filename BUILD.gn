@@ -1890,12 +1890,7 @@ if (current_toolchain == host_toolchain) {
 if (current_toolchain == host_toolchain) {
   ohos_executable("grpc_cpp_plugin") {
     sources = [ "${GRPC_DIR}/src/compiler/cpp_plugin.cc" ]
-    deps = [
-      ":grpc_plugin_support",
-      "//third_party/protobuf:protobuf_lite_static",
-      "//third_party/protobuf:protobuf_static",
-      "//third_party/protobuf:protoc_static_lib",
-    ]
+    deps = [ ":grpc_plugin_support" ]
     external_deps = [
       "protobuf:protobuf_lite_static",
       "protobuf:protobuf_static",
