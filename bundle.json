@@ -21,28 +21,34 @@
         "ram": "",
         "deps": {
             "components": [
-                "hilog"
-            ],
-            "third_party": [
+                "hilog",
+                "protobuf",
                 "abseil-cpp",
                 "openssl",
-                "protobuf",
                 "re2",
                 "zlib"
-            ]
+            ],
+            "third_party": []
         },
         "build": {
             "sub_component": [],
             "inner_kits": [
                 {
-                    "name": "//third_party/grpc:gprc",
+                    "name": "//third_party/grpc:grpc",
                     "header": {
                         "header_files": [],
                         "header_base": ""
                     }
                 },
                 {
-                    "name": "//third_party/grpc:gprcxx",
+                    "name": "//third_party/grpc:grpcxx",
+                    "header": {
+                        "header_files": [],
+                        "header_base": ""
+                    }
+                },
+                {
+                    "name": "//third_party/grpc:gpr",
                     "header": {
                         "header_files": [],
                         "header_base": ""
