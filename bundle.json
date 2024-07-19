@@ -34,32 +34,16 @@
             "sub_component": [],
             "inner_kits": [
                 {
-                    "name": "//third_party/grpc:grpc",
-                    "header": {
-                        "header_files": [],
-                        "header_base": ""
-                    }
+                    "name": "//third_party/grpc:grpc"
                 },
                 {
-                    "name": "//third_party/grpc:grpcxx",
-                    "header": {
-                        "header_files": [],
-                        "header_base": ""
-                    }
+                    "name": "//third_party/grpc:grpcxx"
                 },
                 {
-                    "name": "//third_party/grpc:gpr",
-                    "header": {
-                        "header_files": [],
-                        "header_base": ""
-                    }
+                    "name": "//third_party/grpc:gpr"
                 },
                 {
-                    "name": "//third_party/grpc:grpc_cpp_plugin",
-                    "header": {
-                        "header_files": ["cpp_plugin.h"],
-                        "header_base": "//third_party/grpc/grpc/src/compiler/cpp_plugin.cc"
-                    }
+                    "name": "//third_party/grpc:grpc_cpp_plugin"
                 }
             ],
             "test": []
