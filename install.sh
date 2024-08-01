@@ -21,6 +21,7 @@ patch -p1 < $1/src_core_lib_iomgr.patch
 patch -p1 < $1/backport-Ignore-Connection-Aborted-errors-on-accept-29318.patch
 patch -p1 < $1/backport-iomgr-EventEngine-Improve-server-handling-o.patch
 patch -p1 < $1/fix-CVE-2023-33953-add-header-limit.patch
+patch -p1 < $1/fix-CVE-2023-44487.patch
 flock -u 100
 } 100<>$1/lock_file.lock
 exit 0
