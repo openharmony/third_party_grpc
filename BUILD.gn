@@ -535,6 +535,8 @@ ohos_shared_library("grpc") {
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/incoming_metadata.cc",
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/incoming_metadata.h",
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/internal.h",
+    "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/max_concurrent_streams_policy.cc",
+    "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/max_concurrent_streams_policy.h",
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/parsing.cc",
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/stream_lists.cc",
     "${GRPC_DIR}/src/core/ext/transport/chttp2/transport/stream_map.cc",
