@@ -23,8 +23,6 @@ config("pulbic_grpc_config") {
   include_dirs = [
     "${GRPC_DIR}/",
     "${GRPC_DIR}/include/",
-    "//third_party/abseil-cpp/abseil-cpp",
-    "//third_party/re2/re2",
   ]
   defines = [
     "GRPC_USE_PROTO_LITE",
@@ -137,8 +135,8 @@ source_set("reflection") {
     ":port",
     ":table",
     ":upb",
-    "//third_party/protobuf:protobuf",
   ]
+  external_deps = [ "protobuf:protobuf" ]
 }
 
 source_set("json") {
@@ -299,6 +297,7 @@ ohos_shared_library("gpr") {
     "${GRPC_DIR}/third_party/upb/upb/upb.c",
   ]
   external_deps = [
+    "abseil-cpp:absl_base",
     "abseil-cpp:absl_cord",
     "abseil-cpp:absl_spinlock_wait",
     "abseil-cpp:absl_status",
@@ -1881,7 +1880,7 @@ if (current_toolchain == host_toolchain) {
       "${GRPC_DIR}/src/compiler/python_private_generator.h",
       "${GRPC_DIR}/src/compiler/schema_interface.h",
     ]
-    deps = [ "//third_party/protobuf:protoc_lib" ]
+    external_deps = [ "protobuf:protoc_lib" ]
     public_configs = [ ":pulbic_grpc_config" ]
 
     #configs = [ ":private_grpc_config" ]
