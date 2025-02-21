@@ -1,9 +1,10 @@
-%global c_so_version 19
-%global cpp_so_version 1.41
+%global c_so_version 37
+%global cpp_so_version 1.60
+%global cpp_std 17
 
 Name:          grpc
-Version:       1.41.1
-Release:       6
+Version:       1.60.0
+Release:       5
 Summary:       A modern, open source high performance RPC framework that can run in any environment
 License:       ASL 2.0
 URL:           https://www.grpc.io
@@ -11,12 +12,13 @@ Source0:       https://github.com/grpc/grpc/archive/v%{version}/%{name}-%{versio
 
 Patch0006:     repair-pkgconfig-path.patch
 Patch0007:     add-secure-compile-option-in-Makefile.patch
-Patch0010:     backport-grpc-1.41.1-python-grpcio-use-system-abseil.patch
-Patch0011:     backport-Ignore-Connection-Aborted-errors-on-accept-29318.patch
-Patch0012:     backport-iomgr-EventEngine-Improve-server-handling-o.patch
-Patch0013:     fix-CVE-2023-33953-add-header-limit.patch
+Patch0009:     remove-cert-expired-on-20230930.patch
+Patch0010:     backport-Specify-noexcept-for-cdef-functions.patch
+Patch0011:     remove-cert-expired-at-20250512.patch
+Patch0012:     backport-CVE-2024-7246-chttp2-Fix-a-bug-in-hpack-error-handling.patch
+Patch0013:     backport-CVE-2024-11407.patch
 
-BuildRequires: gcc-c++ pkgconfig protobuf-devel protobuf-compiler
+BuildRequires: gcc-c++ pkgconfig protobuf-devel protobuf-compiler protobuf-lite-devel
 BuildRequires: openssl-devel c-ares-devel gtest-devel zlib-devel gperftools-devel
 BuildRequires: python3-devel python3-setuptools python3-Cython
 BuildRequires: cmake >= 3.13.0
@@ -61,11 +63,20 @@ Python3 bindings for gRPC.
 sed -i 's:^prefix ?= .*:prefix ?= %{_prefix}:' Makefile
 sed -i 's:$(prefix)/lib:$(prefix)/%{_lib}:' Makefile
 sed -i 's:^GTEST_LIB =.*::' Makefile
+#avoid downloading
+mkdir  %{_builddir}/%{name}-%{version}/third_party/opencensus-proto/src
+sed -r -i 's/(std=c\+\+)14/\1%{cpp_std}/g' \
+    setup.py grpc.gyp Rakefile \
+    examples/cpp/*/Makefile \
+    examples/cpp/*/CMakeLists.txt \
+    tools/run_tests/artifacts/artifact_targets.py \
+    tools/distrib/python/grpcio_tools/setup.py
 
 %build
 mkdir -p cmake/build
 cd cmake/build
 cmake ../../ -DgRPC_INSTALL=ON\
+             -DCMAKE_CXX_STANDARD:STRING=%{cpp_std} \
              -DgRPC_CARES_PROVIDER=package \
              -DgRPC_PROTOBUF_PROVIDER=package \
              -DgRPC_SSL_PROVIDER=package      \
@@ -80,7 +91,9 @@ cmake ../../ -DgRPC_INSTALL=ON\
              -DgRPC_INSTALL_PKGCONFIGDIR=%{buildroot}%{_libdir}/pkgconfig \
              -DCMAKE_INSTALL_PREFIX=%{_prefix} \
              -DBUILD_SHARED_LIBS=ON \
-             -DCMAKE_VERBOSE_MAKEFILE=ON
+             -DCMAKE_VERBOSE_MAKEFILE=ON \
+             -DCMAKE_EXE_LINKER_FLAGS=-Wl,--as-needed \
+             -DCMAKE_SHARED_LINKER_FLAGS=-Wl,--as-needed
 make -j24 V=1
 
 # build python module
@@ -123,6 +136,11 @@ cd ../..
 %{_libdir}/libgrpc++_unsecure.so.%{cpp_so_version}*
 %{_libdir}/libgrpc_plugin_support.so.%{cpp_so_version}*
 %{_libdir}/libgrpcpp_channelz.so.%{cpp_so_version}*
+%{_libdir}/libgrpc_authorization_provider.so.%{cpp_so_version}*
+%{_libdir}/libupb_collections_lib.so.%{c_so_version}*
+%{_libdir}/libupb_json_lib.so.%{c_so_version}*
+%{_libdir}/libupb_textformat_lib.so.%{c_so_version}*
+%{_libdir}/libutf8_range_lib.so.%{c_so_version}*
 
 %files plugins
 %{_bindir}/grpc_*_plugin
@@ -138,20 +156,68 @@ cd ../..
 %files -n python3-grpcio
 %defattr(-,root,root)
 %{python3_sitearch}/grpc
-%{python3_sitearch}/grpcio-%{version}-py?.?.egg-info
+%{python3_sitearch}/grpcio-%{version}-py*
 
 %changelog
-* Fri Sep 22 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-6
+* Tue Dec 03 2024 xinghe <xinghe2@h-partners.com> - 1.60.0-5
 - Type:CVE
-- ID:CVE-2023-33953
+- CVE:CVE-2024-11407
 - SUG:NA
-- DESC:fix CVE-2023-33953
+- DESC:fix CVE-2024-11407
 
-* Wed Sep 20 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.41.1-5
+* Wed Aug 14 2024 zhouyihang <zhouyihang3@h-partners.com> - 1.60.0-4
+- Type:CVE
+- CVE:CVE-2024-7246
+- SUG:NA
+- DESC:fix CVE-2024-7246
+
+* Fri Jun 21 2024 zhouyihang<zhouyihang3@h-partners.com> - 1.60.0-3
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:remove cert expired at 20250512
+
+* Mon Feb 05 2024 zhouyihang <zhouyihang3@h-partners.com> - 1.60.0-2
+- Type:bugfix
+- CVE:NA
+- SUG:NA
+- DESC:add noexcept to adapt for Cython_3.X
+
+* Fri Jan 19 2024 zhouyihang <zhouyihang3@h-partners.com> - 1.60.0-1
+- Type:requirement
+- CVE:NA
+- SUG:NA
+- DESC:upgrade grpc to 1.60.0
+
+* Wed Nov 15 2023 zhouyihang<zhouyihang3@h-partners.com> - 1.54.2-3
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:remove cert expired on 20230930
+
+* Thu Sep 14 2023 zhouyihang <zhouyihang3@h-partners.com> - 1.54.2-2
 - Type:CVE
 - ID:CVE-2023-4785
 - SUG:NA
 - DESC:fix CVE-2023-4785
+
+* Thu Aug 03 2023 zhouyihang <zhouyihang3@h-partners.com> - 1.54.2-1
+- Type:requirement
+- ID:NA
+- SUG:NA
+- DESC:upgrade grpc to 1.54.2
+
+* Fri Jul 28 2023 eaglegai <eaglegai@163.com> - 1.50.1-2
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:use c++17 to fix build error
+
+* Fri Nov 11 2022 zhouyihang <zhouyihang3@h-partners.com> - 1.50.1-1
+- Type:requirement
+- ID:NA
+- SUG:NA
+- DESC:upgrade grpc to 1.50.1
 
 * Thu Oct 20 2022 zhouyihang <zhouyihang3@h-partners.com> - 1.41.1-4
 - Type:bugfix
@@ -159,19 +225,19 @@ cd ../..
 - SUG:NA
 - DESC:add some secure compilation options
 
-* Tue Mar 22 2022 gaihuiying <eaglegai@163.com> - 1.41.1-3
+* Sat Apr 16 2022 xingwei <xingwei14@h-partners.com> - 1.41.1-3
 - Type:bugfix
 - ID:NA
 - SUG:NA
 - DESC:delete useless so files
 
-* Fri Feb 11 2022 chengzeruizhi <chengzeruizhi@huawei.com> - 1.41.1-2
-- Type:enhancement
+* Wed Mar 30 2022 xihaochen <xihaochen@h-partners.com> - 1.41.1-2
+- Type:requirement
 - ID:NA
 - SUG:NA
-- DESC: remove gflags
+- DESC:remove gflags
 
-* Mon Dec 27 2021 gaihuiying <gaihuiying1@huawei.com> - 1.41.1-1
+* Tue Mar 29 2022 xihaochen <xihaochen@h-partners.com> - 1.41.1-1
 - Type:requirement
 - ID:NA
 - SUG:NA
@@ -201,7 +267,7 @@ cd ../..
 - SUG:NA
 - DESC:separate re2 from grpc source
 
-* Mon Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
+* Fri Aug 28 2020 liuxin <liuxin264@huawei.com> - 1.31.0-1
 - Type:requirement
 - ID:NA
 - SUG:NA
