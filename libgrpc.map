@@ -184,6 +184,7 @@
   "grpc_server_config_fetcher_xds_create";
   "grpc_byte_buffer_reader_readall";
   "grpc_slice_buffer_add_indexed";
+  "__emutls_v._ZN9grpc_core9Timestamp25thread_local_time_source_E";
   extern "C++" {
     "grpc_inproc_channel_create(grpc_server*, grpc_channel_args*, void*)";
     "grpc_resource_user_allocate_threads(grpc_resource_user*, int)";
