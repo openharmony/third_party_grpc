@@ -1447,9 +1447,9 @@ ohos_shared_library("grpc") {
   external_deps = [
     "abseil-cpp:absl_container",
     "abseil-cpp:absl_cord",
+    "abseil-cpp:absl_raw_logging_internal",
     "abseil-cpp:absl_status",
     "abseil-cpp:absl_statusor",
-    "abseil-cpp:absl_str_format_internal",
     "abseil-cpp:absl_str_format_internal",
     "abseil-cpp:absl_strings",
     "abseil-cpp:absl_sync",
