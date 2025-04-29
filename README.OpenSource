@@ -3,8 +3,8 @@
     "Name": "openEuler:grpc",
     "License": "Apache License V2.0",
     "License File": "LICENSE",
-    "Version Number": "1.41.1-7.oe2203sp3",
-    "Upstream URL": "https://www.openeuler.org",
-    "Description": "gRPC is a modern open source high performance Remote Procedure Call (RPC) framework that can run in any environment."
+    "Version Number": "1.70.1",
+    "Upstream URL": "https://github.com/grpc/grpc",
+    "Description": "gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems."
   }
 ]
