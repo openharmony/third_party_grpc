@@ -13,16 +13,9 @@ flock -x 100
 if [ -d "grpc" ];then
     rm -rf grpc
 fi
-tar -zxvf grpc-1.41.1.tar.gz
-mv grpc-1.41.1 grpc
+tar -zxvf grpc-1.70.1.tar.gz
+mv grpc-1.70.1 grpc
 cd $1/grpc
-patch -p1 < $1/src_core_lib_debug.patch
-patch -p1 < $1/src_core_lib_iomgr.patch
-patch -p1 < $1/backport-Ignore-Connection-Aborted-errors-on-accept-29318.patch
-patch -p1 < $1/backport-iomgr-EventEngine-Improve-server-handling-o.patch
-patch -p1 < $1/fix-CVE-2023-33953-add-header-limit.patch
-patch -p1 < $1/fix-CVE-2023-44487.patch
-patch -p1 < $1/fix-memory-leak.patch
 flock -u 100
 } 100<>$1/lock_file.lock
 exit 0
