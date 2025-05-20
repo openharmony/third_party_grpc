@@ -43,7 +43,7 @@
                     "name": "//third_party/grpc:gpr"
                 },
                 {
-                    "name": "//third_party/grpc:grpc_cpp_plugin"
+                    "name": "//third_party/grpc:grpc_cpp_plugin($host_toolchain)"
                 }
             ],
             "test": []
