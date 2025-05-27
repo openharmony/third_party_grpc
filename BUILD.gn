@@ -47,6 +47,8 @@ config("private_grpc_config") {
     "-Wno-deprecated-builtins",
     "-Wno-error=unused-variable",
   ]
+  
+  ldflags = [ "-Wl,--lto-O0" ]
   defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
 }
 
