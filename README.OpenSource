@@ -1,6 +1,6 @@
 [
   {
-    "Name": "google/grpc",
+    "Name": "grpc",
     "License": "Apache License V2.0",
     "License File": "LICENSE",
     "Version Number": "1.70.1",
