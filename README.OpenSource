@@ -5,7 +5,7 @@
     "License File": "LICENSE",
     "Version Number": "1.70.1",
     "Upstream URL": "https://github.com/grpc/grpc",
-    "Description": "gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems."
+    "Description": "gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems.",
     "Dependencies": [ "re2", "protobuf", "abseil-cpp", "zlib" ]
   }
 ]
