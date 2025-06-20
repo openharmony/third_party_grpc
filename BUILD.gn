@@ -1291,4 +1291,6 @@ if (current_toolchain == host_toolchain) {
     subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
     part_name = "${THIRDPARTY_GRPC_PART_NAME}"
   }
+} else {
+  group("grpc_cpp_plugin") {}
 }
