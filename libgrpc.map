@@ -323,6 +323,7 @@
     "grpc_server_add_passive_listener(grpc_core::Server*, grpc_server_credentials*, std::__h::shared_ptr<grpc_core::experimental::PassiveListenerImpl>)";
     "_upb_Message_Realloc_dont_copy_me__upb_internal_use_only";
     "_upb_Message_Getexts_dont_copy_me__upb_internal_use_only";
+    "grpc_core::ExperimentFlags::LoadFlagsAndCheck(unsigned long)";
   };
   local:
     *;
