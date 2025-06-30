@@ -304,6 +304,26 @@
     "grpc_core::Arena::AllocZone(unsigned long)";
     "grpc_core::ThreadQuota::Reserve(unsigned long)";
     "grpc_core::ThreadQuota::Release(unsigned long)";
+    "grpc_call_credentials_release";
+    "grpc_json_get_string_property(grpc_core::experimental::Json const&, char const*, absl::lts_20250127::Status*)";
+    "grpc_core::LoadFile(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool)";
+    "grpc_core::ConnectionContext::Orphan()";
+    "grpc_core::ExperimentFlags::LoadFlagsAndCheck(unsigned int)";
+    "grpc_core::ExperimentFlags::experiment_flags_";
+    "grpc_cq_end_op(grpc_completion_queue*, void*, absl::lts_20250127::Status, void (*)(void*, grpc_cq_completion*), void*, grpc_cq_completion*, bool)";
+    "grpc_core::StaticDataCertificateProvider::ValidateCredentials() const";
+    "grpc_core::FileWatcherCertificateProvider::ValidateCredentials() const";
+    "grpc_tls_credentials_options_set_min_tls_version";
+    "grpc_tls_credentials_options_set_max_tls_version";
+    "grpc_core::backend_metric_trace";
+    "grpc__health__v1__HealthCheckRequest_msg_init";
+    "grpc__health__v1__HealthCheckResponse_msg_init";
+    "grpc_call_run_in_event_engine(grpc_call const*, absl::lts_20250127::AnyInvocable<void ()>)";
+    "vtable for grpc_core::experimental::PassiveListenerImpl";
+    "grpc_server_add_passive_listener(grpc_core::Server*, grpc_server_credentials*, std::__h::shared_ptr<grpc_core::experimental::PassiveListenerImpl>)";
+    "_upb_Message_Realloc_dont_copy_me__upb_internal_use_only";
+    "_upb_Message_Getexts_dont_copy_me__upb_internal_use_only";
+    "grpc_core::ExperimentFlags::LoadFlagsAndCheck(unsigned long)";
   };
   local:
     *;

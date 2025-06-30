@@ -1119,7 +1119,7 @@ ohos_shared_library("grpc") {
     "${GRPC_DIR}/third_party/xxhash",
   ]
   if (!is_asan && !is_debug) {
-    #version_script = "libgrpc.map"
+    version_script = "libgrpc.map"
   }
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
