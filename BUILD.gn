@@ -14,10 +14,8 @@
 import("//build/ohos.gni")
 THIRDPARTY_GRPC_SUBSYS_NAME = "thirdparty"
 THIRDPARTY_GRPC_PART_NAME = "grpc"
-libgrpc_path = rebase_path("//third_party/grpc")
-exec_script("install.sh", [ "$libgrpc_path" ])
 
-GRPC_DIR = rebase_path("//third_party/grpc/grpc")
+GRPC_DIR = rebase_path("//third_party/grpc")
 
 config("pulbic_grpc_config") {
   include_dirs = [
@@ -1238,18 +1236,16 @@ if (current_toolchain == host_toolchain) {
       "${GRPC_DIR}/src/compiler/cpp_generator.h",
       "${GRPC_DIR}/src/compiler/cpp_generator_helpers.h",
       "${GRPC_DIR}/src/compiler/cpp_plugin.h",
-
-      #"${GRPC_DIR}/src/compiler/csharp_generator.cc",
-      #"${GRPC_DIR}/src/compiler/csharp_generator.h",
-      #"${GRPC_DIR}/src/compiler/csharp_generator_helpers.h",
+      "${GRPC_DIR}/src/compiler/csharp_generator.cc",
+      "${GRPC_DIR}/src/compiler/csharp_generator.h",
+      "${GRPC_DIR}/src/compiler/csharp_generator_helpers.h",
       "${GRPC_DIR}/src/compiler/generator_helpers.h",
       "${GRPC_DIR}/src/compiler/node_generator.cc",
       "${GRPC_DIR}/src/compiler/node_generator.h",
       "${GRPC_DIR}/src/compiler/node_generator_helpers.h",
-
-      #"${GRPC_DIR}/src/compiler/objective_c_generator.cc",
-      #"${GRPC_DIR}/src/compiler/objective_c_generator.h",
-      #"${GRPC_DIR}/src/compiler/objective_c_generator_helpers.h",
+      "${GRPC_DIR}/src/compiler/objective_c_generator.cc",
+      "${GRPC_DIR}/src/compiler/objective_c_generator.h",
+      "${GRPC_DIR}/src/compiler/objective_c_generator_helpers.h",
       "${GRPC_DIR}/src/compiler/php_generator.cc",
       "${GRPC_DIR}/src/compiler/php_generator.h",
       "${GRPC_DIR}/src/compiler/php_generator_helpers.h",
@@ -1267,9 +1263,7 @@ if (current_toolchain == host_toolchain) {
       "abseil-cpp:absl_strings",
       "protobuf:protoc_lib",
     ]
-    defines = [ "GRPC_CUSTOM_CSHARP_GETCLASSNAME" ]
     public_configs = [ ":pulbic_grpc_config" ]
-
     #configs = [ ":private_grpc_config" ]
   }
 }
