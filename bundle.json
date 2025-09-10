@@ -20,13 +20,13 @@
         "rom": "",
         "ram": "",
         "deps": {
-            "components": [
+            "components": [ 
                 "hilog",
                 "protobuf",
                 "abseil-cpp",
                 "openssl",
                 "re2",
-                "zlib"
+                "zlib" 
             ],
             "third_party": []
         },
