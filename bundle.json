@@ -31,7 +31,9 @@
             "third_party": []
         },
         "build": {
-            "sub_component": [],
+            "sub_component": [
+                "//third_party/grpc:grpc_plugin_toolchain"
+            ],
             "inner_kits": [
                 {
                     "name": "//third_party/grpc:grpc"
