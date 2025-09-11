@@ -45,7 +45,7 @@ config("private_grpc_config") {
     "-Wno-deprecated-builtins",
     "-Wno-error=unused-variable",
   ]
-  
+
   ldflags = [ "-Wl,--lto-O0" ]
   defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
 }
@@ -1225,66 +1225,71 @@ ohos_shared_library("grpcxx") {
 }
 
 # Only compile the plugin for the host architecture.
-if (current_toolchain == host_toolchain) {
-  source_set("grpc_plugin_support") {
-    sources = [
-      "${GRPC_DIR}/include/grpc++/impl/codegen/config_protobuf.h",
-      "${GRPC_DIR}/include/grpcpp/impl/codegen/config_protobuf.h",
-      "${GRPC_DIR}/src/compiler/config.h",
-      "${GRPC_DIR}/src/compiler/config_protobuf.h",
-      "${GRPC_DIR}/src/compiler/cpp_generator.cc",
-      "${GRPC_DIR}/src/compiler/cpp_generator.h",
-      "${GRPC_DIR}/src/compiler/cpp_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/cpp_plugin.h",
-      "${GRPC_DIR}/src/compiler/csharp_generator.cc",
-      "${GRPC_DIR}/src/compiler/csharp_generator.h",
-      "${GRPC_DIR}/src/compiler/csharp_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/node_generator.cc",
-      "${GRPC_DIR}/src/compiler/node_generator.h",
-      "${GRPC_DIR}/src/compiler/node_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/objective_c_generator.cc",
-      "${GRPC_DIR}/src/compiler/objective_c_generator.h",
-      "${GRPC_DIR}/src/compiler/objective_c_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/php_generator.cc",
-      "${GRPC_DIR}/src/compiler/php_generator.h",
-      "${GRPC_DIR}/src/compiler/php_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/proto_parser_helper.cc",
-      "${GRPC_DIR}/src/compiler/proto_parser_helper.h",
-      "${GRPC_DIR}/src/compiler/protobuf_plugin.h",
-      "${GRPC_DIR}/src/compiler/python_generator.cc",
-      "${GRPC_DIR}/src/compiler/python_generator.h",
-      "${GRPC_DIR}/src/compiler/python_generator_helpers.h",
-      "${GRPC_DIR}/src/compiler/python_private_generator.h",
-      "${GRPC_DIR}/src/compiler/schema_interface.h",
-    ]
-    external_deps = [
-      "abseil-cpp:absl_status",
-      "abseil-cpp:absl_strings",
-      "protobuf:protoc_lib",
-    ]
-    public_configs = [ ":pulbic_grpc_config" ]
-    #configs = [ ":private_grpc_config" ]
-  }
+
+source_set("grpc_plugin_support") {
+  sources = [
+    "${GRPC_DIR}/include/grpc++/impl/codegen/config_protobuf.h",
+    "${GRPC_DIR}/include/grpcpp/impl/codegen/config_protobuf.h",
+    "${GRPC_DIR}/src/compiler/config.h",
+    "${GRPC_DIR}/src/compiler/config_protobuf.h",
+    "${GRPC_DIR}/src/compiler/cpp_generator.cc",
+    "${GRPC_DIR}/src/compiler/cpp_generator.h",
+    "${GRPC_DIR}/src/compiler/cpp_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/cpp_plugin.h",
+    "${GRPC_DIR}/src/compiler/csharp_generator.cc",
+    "${GRPC_DIR}/src/compiler/csharp_generator.h",
+    "${GRPC_DIR}/src/compiler/csharp_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/node_generator.cc",
+    "${GRPC_DIR}/src/compiler/node_generator.h",
+    "${GRPC_DIR}/src/compiler/node_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/objective_c_generator.cc",
+    "${GRPC_DIR}/src/compiler/objective_c_generator.h",
+    "${GRPC_DIR}/src/compiler/objective_c_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/php_generator.cc",
+    "${GRPC_DIR}/src/compiler/php_generator.h",
+    "${GRPC_DIR}/src/compiler/php_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/proto_parser_helper.cc",
+    "${GRPC_DIR}/src/compiler/proto_parser_helper.h",
+    "${GRPC_DIR}/src/compiler/protobuf_plugin.h",
+    "${GRPC_DIR}/src/compiler/python_generator.cc",
+    "${GRPC_DIR}/src/compiler/python_generator.h",
+    "${GRPC_DIR}/src/compiler/python_generator_helpers.h",
+    "${GRPC_DIR}/src/compiler/python_private_generator.h",
+    "${GRPC_DIR}/src/compiler/schema_interface.h",
+  ]
+  external_deps = [
+    "abseil-cpp:absl_status",
+    "abseil-cpp:absl_strings",
+    "protobuf:protoc_lib",
+  ]
+  public_configs = [ ":pulbic_grpc_config" ]
 }
 
 # Only compile the plugin for the host architecture.
-if (current_toolchain == host_toolchain) {
-  ohos_executable("grpc_cpp_plugin") {
-    sources = [ "${GRPC_DIR}/src/compiler/cpp_plugin.cc" ]
-    deps = [ ":grpc_plugin_support" ]
-    external_deps = [
-      "abseil-cpp:absl_base_static",
-      "protobuf:protobuf_lite_static",
-      "protobuf:protobuf_static",
-      "protobuf:protoc_static_lib",
-    ]
-    defines = [ "GRPC_CUSTOM_CSHARP_GETCLASSNAME" ]
-    public_configs = [ ":pulbic_grpc_config" ]
-    configs = [ ":private_grpc_config" ]
-    subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
-    part_name = "${THIRDPARTY_GRPC_PART_NAME}"
-  }
-} else {
-  group("grpc_cpp_plugin") {}
+
+ohos_executable("grpc_cpp_plugin") {
+  sources = [ "${GRPC_DIR}/src/compiler/cpp_plugin.cc" ]
+  deps = [ ":grpc_plugin_support" ]
+  external_deps = [
+    "abseil-cpp:absl_base_static",
+    "protobuf:protobuf_lite_static",
+    "protobuf:protobuf_static",
+    "protobuf:protoc_static_lib",
+  ]
+  install_enable = false
+  defines = [ "GRPC_CUSTOM_CSHARP_GETCLASSNAME" ]
+  public_configs = [ ":pulbic_grpc_config" ]
+  configs = [ ":private_grpc_config" ]
+  subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
+  part_name = "${THIRDPARTY_GRPC_PART_NAME}"
+}
+
+group("grpc_plugin_toolchain"){
+  deps = [
+    ":grpc_cpp_plugin",
+    ":grpc_cpp_plugin($host_toolchain)",
+    ":grpc_plugin_support",
+    ":grpc_plugin_support($host_toolchain)",
+  ]
 }

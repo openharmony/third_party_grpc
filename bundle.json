@@ -20,18 +20,20 @@
         "rom": "",
         "ram": "",
         "deps": {
-            "components": [
+            "components": [ 
                 "hilog",
                 "protobuf",
                 "abseil-cpp",
                 "openssl",
                 "re2",
-                "zlib"
+                "zlib" 
             ],
             "third_party": []
         },
         "build": {
-            "sub_component": [],
+            "sub_component": [
+                "//third_party/grpc:grpc_plugin_toolchain"
+            ],
             "inner_kits": [
                 {
                     "name": "//third_party/grpc:grpc"
