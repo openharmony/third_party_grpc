@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
 #include <grpc/event_engine/endpoint_config.h>
 #include <grpc/grpc.h>
 #include <grpc/support/alloc.h>
@@ -28,7 +27,6 @@
 #include <grpcpp/impl/sync.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
@@ -47,15 +45,17 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "src/core/client_channel/backup_poller.h"
 #include "src/core/client_channel/config_selector.h"
 #include "src/core/client_channel/global_subchannel_pool.h"
 #include "src/core/config/config_vars.h"
+#include "src/core/credentials/transport/fake/fake_credentials.h"
 #include "src/core/lib/address_utils/parse_address.h"
 #include "src/core/lib/address_utils/sockaddr_utils.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/iomgr/tcp_client.h"
-#include "src/core/lib/security/credentials/fake/fake_credentials.h"
 #include "src/core/lib/transport/connectivity_state.h"
 #include "src/core/resolver/endpoint_addresses.h"
 #include "src/core/resolver/fake/fake_resolver.h"
@@ -73,6 +73,7 @@
 #include "src/proto/grpc/health/v1/health.grpc.pb.h"
 #include "src/proto/grpc/testing/echo.grpc.pb.h"
 #include "test/core/test_util/port.h"
+#include "test/core/test_util/postmortem.h"
 #include "test/core/test_util/resolve_localhost_ip46.h"
 #include "test/core/test_util/test_config.h"
 #include "test/core/test_util/test_lb_policies.h"
@@ -147,26 +148,26 @@ class MyTestServiceImpl : public TestServiceImpl {
       if (request_metrics.eps() > 0) {
         recorder->RecordEpsMetric(request_metrics.eps());
       }
-      for (const auto& p : request_metrics.request_cost()) {
-        char* key = static_cast<char*>(
-            grpc_call_arena_alloc(context->c_call(), p.first.size() + 1));
-        strncpy(key, p.first.data(), p.first.size());
-        key[p.first.size()] = '\0';
-        recorder->RecordRequestCostMetric(key, p.second);
+      for (const auto& [key, value] : request_metrics.request_cost()) {
+        char* key_copy = static_cast<char*>(
+            grpc_call_arena_alloc(context->c_call(), key.size() + 1));
+        strncpy(key_copy, key.data(), key.size());
+        key_copy[key.size()] = '\0';
+        recorder->RecordRequestCostMetric(key_copy, value);
       }
-      for (const auto& p : request_metrics.utilization()) {
-        char* key = static_cast<char*>(
-            grpc_call_arena_alloc(context->c_call(), p.first.size() + 1));
-        strncpy(key, p.first.data(), p.first.size());
-        key[p.first.size()] = '\0';
-        recorder->RecordUtilizationMetric(key, p.second);
+      for (const auto& [key, value] : request_metrics.utilization()) {
+        char* key_copy = static_cast<char*>(
+            grpc_call_arena_alloc(context->c_call(), key.size() + 1));
+        strncpy(key_copy, key.data(), key.size());
+        key_copy[key.size()] = '\0';
+        recorder->RecordUtilizationMetric(key_copy, value);
       }
-      for (const auto& p : request_metrics.named_metrics()) {
-        char* key = static_cast<char*>(
-            grpc_call_arena_alloc(context->c_call(), p.first.size() + 1));
-        strncpy(key, p.first.data(), p.first.size());
-        key[p.first.size()] = '\0';
-        recorder->RecordNamedMetric(key, p.second);
+      for (const auto& [key, value] : request_metrics.named_metrics()) {
+        char* key_copy = static_cast<char*>(
+            grpc_call_arena_alloc(context->c_call(), key.size() + 1));
+        strncpy(key_copy, key.data(), key.size());
+        key_copy[key.size()] = '\0';
+        recorder->RecordNamedMetric(key_copy, value);
       }
     }
     return TestServiceImpl::Echo(context, request, response);
@@ -596,18 +597,27 @@ class ClientLbEnd2endTest : public ::testing::Test {
         // Prefixes added for context
         "(Failed to connect to remote host: )?"
         "(Timeout occurred: )?"
+        // Parenthetical wrappers
+        "( ?\\(*("
+        "Secure read failed|"
+        "Handshake (read|write) failed|"
+        "Delayed close due to in-progress write|"
         // Syscall
         "((connect|sendmsg|recvmsg|getsockopt\\(SO\\_ERROR\\)): ?)?"
         // strerror() output or other message
         "(Connection refused"
         "|Connection reset by peer"
         "|Socket closed"
-        "|FD shutdown)"
+        "|FD shutdown"
+        "|Endpoint closing)"
         // errno value
-        "( \\([0-9]+\\))?");
+        "( \\([0-9]+\\))?"
+        // close paren from wrappers above
+        ")\\)*)+");
   }
 
   std::vector<std::unique_ptr<ServerData>> servers_;
+  grpc_core::PostMortem port_mortem_;
 };
 
 TEST_F(ClientLbEnd2endTest, ChannelStateConnectingWhenResolving) {
@@ -674,7 +684,7 @@ class AuthorityOverrideTest : public ClientLbEnd2endTest {
  protected:
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterAuthorityOverrideLoadBalancingPolicy(builder);
         });
@@ -996,7 +1006,7 @@ TEST_F(PickFirstTest, BackOffInitialReconnect) {
   EXPECT_GE(waited.millis(),
             (kInitialBackOffMs * grpc_test_slowdown_factor()) * 0.7);
   EXPECT_LE(waited.millis(),
-            (kInitialBackOffMs * grpc_test_slowdown_factor()) * 1.3);
+            (kInitialBackOffMs * grpc_test_slowdown_factor()) * 1.5);
 }
 
 TEST_F(PickFirstTest, BackOffMinReconnect) {
@@ -2298,7 +2308,7 @@ class ClientLbPickArgsTest : public ClientLbEnd2endTest {
 
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterTestPickArgsLoadBalancingPolicy(builder,
                                                              SavePickArgs);
@@ -2321,8 +2331,8 @@ class ClientLbPickArgsTest : public ClientLbEnd2endTest {
     std::vector<std::string> entries;
     for (const auto& args_seen : args_seen_list) {
       std::vector<std::string> metadata;
-      for (const auto& p : args_seen.metadata) {
-        metadata.push_back(absl::StrCat(p.first, "=", p.second));
+      for (const auto& [key, value] : args_seen.metadata) {
+        metadata.push_back(absl::StrCat(key, "=", value));
       }
       entries.push_back(absl::StrFormat("{path=\"%s\", metadata=[%s]}",
                                         args_seen.path,
@@ -2430,14 +2440,14 @@ OrcaLoadReport BackendMetricDataToOrcaLoadReport(
                      .SetMemUtilization(backend_metric_data.mem_utilization)
                      .SetQps(backend_metric_data.qps)
                      .SetEps(backend_metric_data.eps);
-  for (const auto& p : backend_metric_data.request_cost) {
-    builder.SetRequestCost(std::string(p.first), p.second);
+  for (const auto& [key, value] : backend_metric_data.request_cost) {
+    builder.SetRequestCost(std::string(key), value);
   }
-  for (const auto& p : backend_metric_data.utilization) {
-    builder.SetUtilization(std::string(p.first), p.second);
+  for (const auto& [key, value] : backend_metric_data.utilization) {
+    builder.SetUtilization(std::string(key), value);
   }
-  for (const auto& p : backend_metric_data.named_metrics) {
-    builder.SetNamedMetrics(std::string(p.first), p.second);
+  for (const auto& [key, value] : backend_metric_data.named_metrics) {
+    builder.SetNamedMetrics(std::string(key), value);
   }
   return builder.Build();
 }
@@ -2453,22 +2463,22 @@ void CheckLoadReportAsExpected(const OrcaLoadReport& actual,
   EXPECT_EQ(actual.rps_fractional(), expected.rps_fractional());
   EXPECT_EQ(actual.eps(), expected.eps());
   EXPECT_EQ(actual.request_cost().size(), expected.request_cost().size());
-  for (const auto& p : actual.request_cost()) {
-    auto it = expected.request_cost().find(p.first);
+  for (const auto& [key, value] : actual.request_cost()) {
+    auto it = expected.request_cost().find(key);
     ASSERT_NE(it, expected.request_cost().end());
-    EXPECT_EQ(it->second, p.second);
+    EXPECT_EQ(it->second, value);
   }
   EXPECT_EQ(actual.utilization().size(), expected.utilization().size());
-  for (const auto& p : actual.utilization()) {
-    auto it = expected.utilization().find(p.first);
+  for (const auto& [key, value] : actual.utilization()) {
+    auto it = expected.utilization().find(key);
     ASSERT_NE(it, expected.utilization().end());
-    EXPECT_EQ(it->second, p.second);
+    EXPECT_EQ(it->second, value);
   }
   EXPECT_EQ(actual.named_metrics().size(), expected.named_metrics().size());
-  for (const auto& p : actual.named_metrics()) {
-    auto it = expected.named_metrics().find(p.first);
+  for (const auto& [key, value] : actual.named_metrics()) {
+    auto it = expected.named_metrics().find(key);
     ASSERT_NE(it, expected.named_metrics().end());
-    EXPECT_EQ(it->second, p.second);
+    EXPECT_EQ(it->second, value);
   }
 }
 
@@ -2481,7 +2491,7 @@ class ClientLbInterceptTrailingMetadataTest : public ClientLbEnd2endTest {
 
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterInterceptRecvTrailingMetadataLoadBalancingPolicy(
               builder, ReportTrailerIntercepted);
@@ -2509,7 +2519,7 @@ class ClientLbInterceptTrailingMetadataTest : public ClientLbEnd2endTest {
     return std::move(trailing_metadata_);
   }
 
-  absl::optional<OrcaLoadReport> backend_load_report() {
+  std::optional<OrcaLoadReport> backend_load_report() {
     grpc_core::MutexLock lock(&mu_);
     return std::move(load_report_);
   }
@@ -2570,7 +2580,7 @@ class ClientLbInterceptTrailingMetadataTest : public ClientLbEnd2endTest {
   grpc_core::CondVar cond_;
   absl::Status last_status_;
   grpc_core::MetadataVector trailing_metadata_;
-  absl::optional<OrcaLoadReport> load_report_;
+  std::optional<OrcaLoadReport> load_report_;
 };
 
 ClientLbInterceptTrailingMetadataTest*
@@ -2884,7 +2894,7 @@ class ClientLbAddressTest : public ClientLbEnd2endTest {
 
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterAddressTestLoadBalancingPolicy(builder,
                                                             SaveAddress);
@@ -2953,7 +2963,7 @@ class OobBackendMetricTest : public ClientLbEnd2endTest {
 
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterOobBackendMetricTestLoadBalancingPolicy(
               builder, BackendMetricCallback);
@@ -2966,9 +2976,9 @@ class OobBackendMetricTest : public ClientLbEnd2endTest {
     grpc_core::CoreConfiguration::Reset();
   }
 
-  absl::optional<BackendMetricReport> GetBackendMetricReport() {
+  std::optional<BackendMetricReport> GetBackendMetricReport() {
     grpc_core::MutexLock lock(&mu_);
-    if (backend_metric_reports_.empty()) return absl::nullopt;
+    if (backend_metric_reports_.empty()) return std::nullopt;
     auto result = std::move(backend_metric_reports_.front());
     backend_metric_reports_.pop_front();
     return result;
@@ -3074,7 +3084,7 @@ class ControlPlaneStatusRewritingTest : public ClientLbEnd2endTest {
  protected:
   static void SetUpTestSuite() {
     grpc_core::CoreConfiguration::Reset();
-    grpc_core::CoreConfiguration::RegisterBuilder(
+    grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
         [](grpc_core::CoreConfiguration::Builder* builder) {
           grpc_core::RegisterFailLoadBalancingPolicy(
               builder, absl::AbortedError("nope"));

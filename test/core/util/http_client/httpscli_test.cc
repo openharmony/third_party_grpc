@@ -21,7 +21,6 @@
 #include <grpc/support/alloc.h>
 #include <grpc/support/sync.h>
 #include <grpc/support/time.h>
-#include <gtest/gtest.h>
 #include <string.h>
 
 #include <algorithm>
@@ -38,6 +37,8 @@
 #include "absl/strings/str_format.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
+#include "gtest/gtest.h"
+#include "src/core/credentials/transport/transport_credentials.h"  // IWYU pragma: keep
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/iomgr/closure.h"
 #include "src/core/lib/iomgr/error.h"
@@ -45,7 +46,6 @@
 #include "src/core/lib/iomgr/iomgr_fwd.h"
 #include "src/core/lib/iomgr/polling_entity.h"
 #include "src/core/lib/iomgr/pollset.h"
-#include "src/core/lib/security/credentials/credentials.h"  // IWYU pragma: keep
 #include "src/core/util/http_client/httpcli.h"
 #include "src/core/util/http_client/httpcli_ssl_credentials.h"
 #include "src/core/util/http_client/parser.h"
@@ -192,7 +192,7 @@ TEST_F(HttpsCliTest, Get) {
       const_cast<char*>("foo.test.google.fr"));
   grpc_channel_args args = {1, &ssl_override_arg};
   auto uri = grpc_core::URI::Create(
-      "https", host, "/get",
+      "https", /*user_info=*/"", host, "/get",
       /*query_parameter_pairs=*/{{"foo", "bar"}, {"baz", "quux"}},
       /*fragment=*/"");
   CHECK(uri.ok());
@@ -222,7 +222,7 @@ TEST_F(HttpsCliTest, Post) {
       const_cast<char*>("foo.test.google.fr"));
   grpc_channel_args args = {1, &ssl_override_arg};
   auto uri = grpc_core::URI::Create(
-      "https", host, "/post",
+      "https", /*user_info=*/"", host, "/post",
       /*query_parameter_pairs=*/{{"foo", "bar"}, {"mumble", "frotz"}},
       /*fragment=*/"");
   CHECK(uri.ok());
@@ -268,7 +268,7 @@ TEST_F(HttpsCliTest, CancelGetDuringSSLHandshake) {
           const_cast<char*>("foo.test.google.fr"));
       grpc_channel_args args = {1, &ssl_override_arg};
       auto uri = grpc_core::URI::Create(
-          "https", fake_http_server_ptr->address(), "/get",
+          "https", /*user_info=*/"", fake_http_server_ptr->address(), "/get",
           {} /* query params */, "" /* fragment */);
       grpc_core::OrphanablePtr<grpc_core::HttpRequest> http_request =
           grpc_core::HttpRequest::Get(

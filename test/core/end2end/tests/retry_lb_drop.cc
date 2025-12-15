@@ -100,18 +100,19 @@ void RegisterDropPolicy(CoreConfiguration::Builder* builder) {
 // even when there is retry configuration in the service config.
 // - 1 retry allowed for UNAVAILABLE status
 // - first attempt returns UNAVAILABLE due to LB drop but does not retry
-CORE_END2END_TEST(RetryTest, RetryLbDrop) {
+CORE_END2END_TEST(RetryTests, RetryLbDrop) {
   SKIP_IF_V3();  // Not working yet
-  CoreConfiguration::RegisterBuilder([](CoreConfiguration::Builder* builder) {
-    RegisterTestPickArgsLoadBalancingPolicy(
-        builder,
-        [](const PickArgsSeen& pick_args) {
-          CHECK_NE(g_pick_args_vector, nullptr);
-          g_pick_args_vector->push_back(pick_args);
-        },
-        kDropPolicyName);
-  });
-  CoreConfiguration::RegisterBuilder(RegisterDropPolicy);
+  CoreConfiguration::RegisterEphemeralBuilder(
+      [](CoreConfiguration::Builder* builder) {
+        RegisterTestPickArgsLoadBalancingPolicy(
+            builder,
+            [](const PickArgsSeen& pick_args) {
+              CHECK_NE(g_pick_args_vector, nullptr);
+              g_pick_args_vector->push_back(pick_args);
+            },
+            kDropPolicyName);
+      });
+  CoreConfiguration::RegisterEphemeralBuilder(RegisterDropPolicy);
   std::vector<PickArgsSeen> pick_args_seen;
   g_pick_args_vector = &pick_args_seen;
   InitServer(ChannelArgs());

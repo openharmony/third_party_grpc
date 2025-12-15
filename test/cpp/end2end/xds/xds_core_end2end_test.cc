@@ -13,9 +13,6 @@
 // limitations under the License.
 //
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -25,6 +22,8 @@
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "envoy/config/listener/v3/listener.pb.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "src/core/client_channel/backup_poller.h"
 #include "src/core/config/config_vars.h"
 #include "test/core/test_util/fake_stats_plugin.h"
@@ -309,7 +308,7 @@ TEST_P(GlobalXdsClientTest, MultipleBadLdsResources) {
   const std::string expected_message2 = absl::StrFormat(
       kMessageFormat, backends_[1]->port(), backends_[0]->port());
   response_state = WaitForNack(
-      DEBUG_LOCATION, [&]() -> absl::optional<AdsServiceImpl::ResponseState> {
+      DEBUG_LOCATION, [&]() -> std::optional<AdsServiceImpl::ResponseState> {
         auto response = balancer_->ads_service()->lds_response_state();
         if (response.has_value() &&
             response->state == AdsServiceImpl::ResponseState::NACKED) {
@@ -320,7 +319,7 @@ TEST_P(GlobalXdsClientTest, MultipleBadLdsResources) {
           LOG(INFO) << "non-matching NACK message: "
                     << response->error_message.c_str();
         }
-        return absl::nullopt;
+        return std::nullopt;
       });
   EXPECT_TRUE(response_state.has_value()) << "timed out waiting for NACK";
 }
@@ -519,8 +518,8 @@ TEST_P(TimeoutTest, EdsServerIgnoresRequest) {
   balancer_->ads_service()->IgnoreResourceType(kEdsTypeUrl);
   CheckRpcSendFailure(
       DEBUG_LOCATION, StatusCode::UNAVAILABLE,
-      "no children in weighted_target policy: EDS resource "
-      "eds_service_name: does not exist \\(node ID:xds_end2end_test\\)",
+      "no children in weighted_target policy \\(EDS resource "
+      "eds_service_name: does not exist \\(node ID:xds_end2end_test\\)\\)",
       RpcOptions().set_timeout_ms(4000));
 }
 
@@ -529,8 +528,8 @@ TEST_P(TimeoutTest, EdsResourceNotPresentInRequest) {
   // by default.
   CheckRpcSendFailure(
       DEBUG_LOCATION, StatusCode::UNAVAILABLE,
-      "no children in weighted_target policy: EDS resource "
-      "eds_service_name: does not exist \\(node ID:xds_end2end_test\\)",
+      "no children in weighted_target policy \\(EDS resource "
+      "eds_service_name: does not exist \\(node ID:xds_end2end_test\\)\\)",
       RpcOptions().set_timeout_ms(4000));
 }
 
@@ -557,9 +556,9 @@ TEST_P(TimeoutTest, EdsSecondResourceNotPresentInRequest) {
   // May need to wait a bit for the RDS change to propagate to the client.
   SendRpcsUntilFailure(
       DEBUG_LOCATION, StatusCode::UNAVAILABLE,
-      "no children in weighted_target policy: "
+      "no children in weighted_target policy \\("
       "EDS resource eds_service_name_does_not_exist: "
-      "does not exist \\(node ID:xds_end2end_test\\)",
+      "does not exist \\(node ID:xds_end2end_test\\)\\)",
       /*timeout_ms=*/30000,
       RpcOptions().set_rpc_method(METHOD_ECHO1).set_timeout_ms(4000));
 }
@@ -1012,10 +1011,10 @@ TEST_P(XdsFederationTest, EdsResourceNameAuthorityUnknown) {
   EXPECT_EQ(status.error_code(), StatusCode::UNAVAILABLE);
   EXPECT_EQ(
       status.error_message(),
-      "no children in weighted_target policy: EDS resource "
+      "no children in weighted_target policy (EDS resource "
       "xdstp://xds.unknown.com/envoy.config.endpoint.v3.ClusterLoadAssignment/"
       "edsservice_name: authority \"xds.unknown.com\" not "
-      "present in bootstrap config (node ID:xds_end2end_test)");
+      "present in bootstrap config (node ID:xds_end2end_test))");
   ASSERT_EQ(GRPC_CHANNEL_TRANSIENT_FAILURE, channel2->GetState(false));
 }
 
@@ -1124,7 +1123,7 @@ class XdsMetricsTest : public XdsEnd2endTest {
             .BuildAndRegister();
     ChannelArguments args;
     args.SetString("test_only.arg", "test_only.value");
-    InitClient(/*builder=*/absl::nullopt, /*lb_expected_authority=*/"",
+    InitClient(/*builder=*/std::nullopt, /*lb_expected_authority=*/"",
                /*xds_resource_does_not_exist_timeout_ms=*/0,
                /*balancer_authority_override=*/"", /*args=*/&args);
   }
@@ -1269,7 +1268,7 @@ TEST_P(XdsMetricsTest, MetricValues) {
               ::testing::Optional(1));
   EXPECT_THAT(stats_plugin_->GetUInt64CounterValue(kMetricServerFailure,
                                                    {kTarget, kXdsServer}, {}),
-              absl::nullopt);
+              std::nullopt);
   for (absl::string_view type_url :
        {"envoy.config.listener.v3.Listener",
         "envoy.config.route.v3.RouteConfiguration",
@@ -1293,7 +1292,7 @@ TEST_P(XdsMetricsTest, MetricValues) {
               ::testing::Optional(1));
   EXPECT_THAT(stats_plugin_->GetUInt64CounterValue(kMetricServerFailure,
                                                    {"#server", kXdsServer}, {}),
-              absl::nullopt);
+              std::nullopt);
   for (absl::string_view type_url :
        {"envoy.config.listener.v3.Listener",
         "envoy.config.route.v3.RouteConfiguration"}) {

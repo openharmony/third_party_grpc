@@ -31,6 +31,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,7 +43,7 @@
 #include "absl/random/random.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
+#include "src/core/call/metadata_batch.h"
 #include "src/core/channelz/channelz.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/channel/channel_fwd.h"
@@ -59,7 +60,6 @@
 #include "src/core/lib/slice/slice.h"
 #include "src/core/lib/surface/channel.h"
 #include "src/core/lib/surface/completion_queue.h"
-#include "src/core/lib/transport/metadata_batch.h"
 #include "src/core/lib/transport/transport.h"
 #include "src/core/server/server_interface.h"
 #include "src/core/telemetry/call_tracer.h"
@@ -181,6 +181,8 @@ class Server : public ServerInterface,
     // tracking systems, without increasing memory utilization.
     class LogicalConnection : public InternallyRefCounted<LogicalConnection> {
      public:
+      explicit LogicalConnection(const char* trace = nullptr)
+          : InternallyRefCounted(trace) {}
       ~LogicalConnection() override = default;
 
       // The following two methods are called in the context of a server config
@@ -189,6 +191,8 @@ class Server : public ServerInterface,
       virtual void DisconnectImmediately() = 0;
     };
 
+    explicit ListenerInterface(const char* trace = nullptr)
+        : InternallyRefCounted(trace) {}
     ~ListenerInterface() override = default;
 
     /// Starts listening.
@@ -228,7 +232,7 @@ class Server : public ServerInterface,
 
     // Adds a LogicalConnection to the listener and updates the channel args if
     // needed, and returns ChannelArgs if successful.
-    absl::optional<ChannelArgs> AddLogicalConnection(
+    std::optional<ChannelArgs> AddLogicalConnection(
         OrphanablePtr<ListenerInterface::LogicalConnection> connection,
         const ChannelArgs& args, grpc_endpoint* endpoint)
         ABSL_LOCKS_EXCLUDED(mu_);
@@ -349,10 +353,9 @@ class Server : public ServerInterface,
   // Sets up a transport.  Creates a channel stack and binds the transport to
   // the server.  Called from the listener when a new connection is accepted.
   // Takes ownership of a ref on resource_user from the caller.
-  grpc_error_handle SetupTransport(
-      Transport* transport, grpc_pollset* accepting_pollset,
-      const ChannelArgs& args,
-      const RefCountedPtr<channelz::SocketNode>& socket_node)
+  grpc_error_handle SetupTransport(Transport* transport,
+                                   grpc_pollset* accepting_pollset,
+                                   const ChannelArgs& args)
       ABSL_LOCKS_EXCLUDED(mu_global_);
 
   void RegisterCompletionQueue(grpc_completion_queue* cq);
@@ -449,7 +452,7 @@ class Server : public ServerInterface,
     // The index into Server::cqs_ of the CQ used as a starting point for
     // where to publish new incoming calls.
     size_t cq_idx_;
-    absl::optional<std::list<ChannelData*>::iterator> list_position_;
+    std::optional<std::list<ChannelData*>::iterator> list_position_;
     grpc_closure finish_destroy_channel_closure_;
     intptr_t channelz_socket_uuid_;
   };
@@ -513,8 +516,8 @@ class Server : public ServerInterface,
 
     std::atomic<CallState> state_{CallState::NOT_STARTED};
 
-    absl::optional<Slice> path_;
-    absl::optional<Slice> host_;
+    std::optional<Slice> path_;
+    std::optional<Slice> host_;
     Timestamp deadline_ = Timestamp::InfFuture();
 
     grpc_completion_queue* cq_new_ = nullptr;
@@ -629,6 +632,13 @@ class Server : public ServerInterface,
     return shutdown_refs_.load(std::memory_order_acquire) == 0;
   }
 
+  // Returns a promise that resolves to
+  // tuple<
+  //     optional<MessageHandle>,
+  //     RequestMatcherInterface::MatchResult,
+  //     ClientMetadataHandle>
+  auto MatchRequestAndMaybeReadFirstMessage(CallHandler call_handler,
+                                            ClientMetadataHandle md);
   auto MatchAndPublishCall(CallHandler call_handler);
   absl::StatusOr<RefCountedPtr<UnstartedCallDestination>> MakeCallDestination(
       const ChannelArgs& args);
@@ -686,7 +696,6 @@ class Server : public ServerInterface,
           channel_args_.GetInt(GRPC_ARG_SERVER_MAX_PENDING_REQUESTS_HARD_LIMIT)
               .value_or(3000)))};
   const Duration max_time_in_pending_queue_;
-  absl::BitGen bitgen_ ABSL_GUARDED_BY(mu_call_);
 
   std::list<ChannelData*> channels_;
   absl::flat_hash_set<OrphanablePtr<ServerTransport>> connections_

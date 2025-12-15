@@ -27,7 +27,6 @@ grpc_cc_test(
         "absl/log:log",
         "gtest",
     ],
-    language = "C++",
     uses_event_engine = False,
     uses_polling = False,
     deps = [
@@ -42,7 +41,6 @@ grpc_cc_test(
     name = "channel_stack_test",
     srcs = ["channel_stack_test.cc"],
     external_deps = ["gtest"],
-    language = "C++",
     uses_event_engine = False,
     uses_polling = False,
     deps = [
@@ -59,7 +57,6 @@ grpc_cc_test(
     external_deps = [
         "gtest",
     ],
-    language = "C++",
     deps = [
         "//:channel_stack_builder",
         "//:gpr",
@@ -76,7 +73,10 @@ grpc_cc_test(
         "absl/log:check",
         "gtest",
     ],
-    language = "C++",
+    tags = [
+        # channel stacks are allowed to be different internally
+        "grpc:no-internal-poller",
+    ],
     uses_event_engine = False,
     uses_polling = False,
     deps = [
@@ -88,42 +88,11 @@ grpc_cc_test(
 )
 
 grpc_cc_test(
-    name = "status_util_test",
-    srcs = ["status_util_test.cc"],
-    external_deps = [
-        "gtest",
-    ],
-    language = "C++",
-    uses_event_engine = False,
-    uses_polling = False,
-    deps = [
-        "//:grpc",
-        "//test/core/test_util:grpc_test_util",
-    ],
-)
-
-grpc_cc_test(
-    name = "call_finalization_test",
-    srcs = ["call_finalization_test.cc"],
-    external_deps = [
-        "gtest",
-    ],
-    language = "C++",
-    deps = [
-        "//:gpr",
-        "//:grpc",
-        "//test/core/promise:test_context",
-        "//test/core/test_util:grpc_test_util",
-    ],
-)
-
-grpc_cc_test(
     name = "server_call_tracer_factory_test",
     srcs = ["server_call_tracer_factory_test.cc"],
     external_deps = [
         "gtest",
     ],
-    language = "C++",
     uses_event_engine = False,
     uses_polling = False,
     deps = [
@@ -137,7 +106,6 @@ grpc_fuzz_test(
     name = "union_with_test",
     srcs = ["union_with_test.cc"],
     external_deps = [
-        "absl/types:variant",
         "fuzztest",
         "fuzztest_main",
         "gtest",

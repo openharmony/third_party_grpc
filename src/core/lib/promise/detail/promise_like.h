@@ -22,6 +22,8 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/meta/type_traits.h"
 #include "src/core/lib/promise/poll.h"
+#include "src/core/util/function_signature.h"
+#include "src/core/util/json/json.h"
 
 // A Promise is a callable object that returns Poll<T> for some T.
 // Often when we're writing code that uses promises, we end up wanting to also
@@ -46,6 +48,25 @@
 // practice people find hard to deal with.
 
 namespace grpc_core {
+
+namespace promise_detail {
+template <typename Promise, typename = void>
+constexpr bool kHasToJsonMethod = false;
+
+template <typename Promise>
+constexpr bool kHasToJsonMethod<
+    Promise, std::void_t<decltype(std::declval<Promise>().ToJson())>> = true;
+}  // namespace promise_detail
+
+template <typename Promise>
+Json PromiseAsJson(const Promise& promise) {
+  if constexpr (promise_detail::kHasToJsonMethod<Promise>) {
+    return promise.ToJson();
+  } else {
+    return Json::FromString(std::string(TypeName<Promise>()));
+  }
+}
+
 namespace promise_detail {
 
 template <typename T>
@@ -79,37 +100,31 @@ template <>
 class PromiseLike<void>;
 
 template <typename F>
-class PromiseLike<F, absl::enable_if_t<!std::is_void<
-#if (defined(__cpp_lib_is_invocable) && __cpp_lib_is_invocable >= 201703L) || \
-    (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-                         std::invoke_result_t<F>
-#else
-                         typename std::result_of<F()>::type
-#endif
-                         >::value>> {
+class PromiseLike<
+    F, absl::enable_if_t<!std::is_void<std::invoke_result_t<F>>::value>> {
  private:
   GPR_NO_UNIQUE_ADDRESS RemoveCVRef<F> f_;
+  using OriginalResult = decltype(f_());
+  using WrappedResult = decltype(WrapInPoll(std::declval<OriginalResult>()));
 
  public:
   // NOLINTNEXTLINE - internal detail that drastically simplifies calling code.
   GPR_ATTRIBUTE_ALWAYS_INLINE_FUNCTION PromiseLike(F&& f)
       : f_(std::forward<F>(f)) {}
-  GPR_ATTRIBUTE_ALWAYS_INLINE_FUNCTION auto operator()()
-      -> decltype(WrapInPoll(f_())) {
+  GPR_ATTRIBUTE_ALWAYS_INLINE_FUNCTION WrappedResult operator()() {
     return WrapInPoll(f_());
   }
-  using Result = typename PollTraits<decltype(WrapInPoll(f_()))>::Type;
+  Json ToJson() const { return PromiseAsJson(f_); }
+  PromiseLike(const PromiseLike&) = default;
+  PromiseLike& operator=(const PromiseLike&) = default;
+  PromiseLike(PromiseLike&&) = default;
+  PromiseLike& operator=(PromiseLike&&) = default;
+  using Result = typename PollTraits<WrappedResult>::Type;
 };
 
 template <typename F>
-class PromiseLike<F, absl::enable_if_t<std::is_void<
-#if (defined(__cpp_lib_is_invocable) && __cpp_lib_is_invocable >= 201703L) || \
-    (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-                         std::invoke_result_t<F>
-#else
-                         typename std::result_of<F()>::type
-#endif
-                         >::value>> {
+class PromiseLike<
+    F, absl::enable_if_t<std::is_void<std::invoke_result_t<F>>::value>> {
  private:
   GPR_NO_UNIQUE_ADDRESS RemoveCVRef<F> f_;
 
@@ -121,10 +136,16 @@ class PromiseLike<F, absl::enable_if_t<std::is_void<
     f_();
     return Empty{};
   }
+  Json ToJson() const { return PromiseAsJson(f_); }
+  PromiseLike(const PromiseLike&) = default;
+  PromiseLike& operator=(const PromiseLike&) = default;
+  PromiseLike(PromiseLike&&) = default;
+  PromiseLike& operator=(PromiseLike&&) = default;
   using Result = Empty;
 };
 
 }  // namespace promise_detail
+
 }  // namespace grpc_core
 
 #endif  // GRPC_SRC_CORE_LIB_PROMISE_DETAIL_PROMISE_LIKE_H

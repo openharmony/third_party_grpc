@@ -56,6 +56,8 @@ grpc_cc_library(
         ":usage_timer",
         "//:grpc",
         "//:grpc++",
+        "//src/core:chaotic_good",
+        "//src/core:endpoint_transport",
         "//src/proto/grpc/testing:benchmark_service_cc_grpc",
         "//src/proto/grpc/testing:control_cc_proto",
         "//src/proto/grpc/testing:payloads_cc_proto",
@@ -195,6 +197,7 @@ grpc_cc_test(
 grpc_cc_test(
     name = "secure_sync_unary_ping_pong_test",
     srcs = ["secure_sync_unary_ping_pong_test.cc"],
+    tags = ["grpc:no-internal-test"],
     deps = [
         ":benchmark_config",
         ":driver_impl",

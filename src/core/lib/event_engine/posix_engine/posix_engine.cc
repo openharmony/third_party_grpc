@@ -67,9 +67,7 @@
 
 // IWYU pragma: no_include <ratio>
 
-// TODO(eryu): remove this GRPC_CFSTREAM condition when the CFEngine is ready.
-// The posix poller currently crashes iOS.
-#if defined(GRPC_POSIX_SOCKET_TCP) && !defined(GRPC_CFSTREAM) && \
+#if defined(GRPC_POSIX_SOCKET_TCP) && \
     !defined(GRPC_DO_NOT_INSTANTIATE_POSIX_POLLER)
 #define GRPC_PLATFORM_SUPPORTS_POSIX_POLLING true
 #else
@@ -78,8 +76,7 @@
 
 using namespace std::chrono_literals;
 
-namespace grpc_event_engine {
-namespace experimental {
+namespace grpc_event_engine::experimental {
 
 namespace {
 
@@ -354,6 +351,28 @@ void PosixEnginePollerManager::TriggerShutdown() {
   }
   poller_->Kick();
 }
+
+std::shared_ptr<PosixEventEngine> PosixEventEngine::MakePosixEventEngine() {
+  // Constructor is private, can't use std::make_shared
+  return std::shared_ptr<PosixEventEngine>(new PosixEventEngine());
+}
+
+#ifdef GRPC_POSIX_SOCKET_TCP
+
+// The posix EventEngine returned by this method would have a shared ownership
+// of the poller and would not be in-charge of driving the poller by calling
+// its Work(..) method. Instead its up to the test to drive the poller. The
+// returned posix EventEngine will also not attempt to shutdown the poller
+// since it does not own it.
+std::shared_ptr<PosixEventEngine>
+PosixEventEngine::MakeTestOnlyPosixEventEngine(
+    std::shared_ptr<grpc_event_engine::experimental::PosixEventPoller>
+        test_only_poller) {
+  // Constructor is private, can't use std::make_shared
+  return std::shared_ptr<PosixEventEngine>(
+      new PosixEventEngine(std::move(test_only_poller)));
+}
+#endif  // GRPC_POSIX_SOCKET_TCP
 
 PosixEnginePollerManager::~PosixEnginePollerManager() {
   if (poller_ != nullptr) {
@@ -742,5 +761,4 @@ PosixEventEngine::CreatePosixListener(
 #endif  // GRPC_PLATFORM_SUPPORTS_POSIX_POLLING
 }
 
-}  // namespace experimental
-}  // namespace grpc_event_engine
+}  // namespace grpc_event_engine::experimental

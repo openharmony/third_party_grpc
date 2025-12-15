@@ -24,7 +24,11 @@ grpc_cc_test(
     external_deps = [
         "gtest",
     ],
-    language = "C++",
+    tags = [
+        # b/117517566.
+        "grpc:no-internal-poller",
+        "channelz_test",
+    ],
     deps = [
         "//:gpr",
         "//:grpc",
@@ -41,7 +45,11 @@ grpc_cc_test(
     external_deps = [
         "gtest",
     ],
-    language = "C++",
+    tags = [
+        # b/117517566.
+        "grpc:no-internal-poller",
+        "channelz_test",
+    ],
     deps = [
         "//:gpr",
         "//:grpc",
@@ -59,7 +67,10 @@ grpc_cc_test(
     external_deps = [
         "gtest",
     ],
-    language = "C++",
+    shard_count = 6,
+    tags = [
+        "channelz_test",
+    ],
     uses_event_engine = False,
     uses_polling = False,
     deps = [
@@ -67,5 +78,23 @@ grpc_cc_test(
         "//:grpc",
         "//:grpc++",
         "//test/core/test_util:grpc_test_util",
+    ],
+)
+
+grpc_cc_test(
+    name = "ztrace_collector_test",
+    srcs = ["ztrace_collector_test.cc"],
+    external_deps = [
+        "gtest",
+        "gtest_main",
+    ],
+    tags = [
+        "channelz_test",
+        "no_windows",
+    ],
+    deps = [
+        "//:grpc",
+        "//src/core:notification",
+        "//src/core:ztrace_collector",
     ],
 )

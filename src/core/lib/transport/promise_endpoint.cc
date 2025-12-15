@@ -22,11 +22,11 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "absl/log/check.h"
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
 #include "src/core/lib/slice/slice_buffer.h"
 #include "src/core/util/sync.h"
 
@@ -76,8 +76,9 @@ void PromiseEndpoint::ReadState::Complete(absl::Status status,
       // A further read is needed.
       // Set read args with number of bytes needed as hint.
       grpc_event_engine::experimental::EventEngine::Endpoint::ReadArgs
-          read_args = {
-              static_cast<int64_t>(num_bytes_requested - buffer.Length())};
+          read_args;
+      read_args.set_read_hint_bytes(
+          static_cast<int64_t>(num_bytes_requested - buffer.Length()));
       // If `Read()` returns true immediately, the callback will not be
       // called. We still need to call our callback to pick up the result and
       // maybe do further reads.
@@ -88,11 +89,10 @@ void PromiseEndpoint::ReadState::Complete(absl::Status status,
       }
       if (ep->Read(
               [self = Ref(), num_bytes_requested](absl::Status status) {
-                ApplicationCallbackExecCtx callback_exec_ctx;
                 ExecCtx exec_ctx;
                 self->Complete(std::move(status), num_bytes_requested);
               },
-              &pending_buffer, &read_args)) {
+              &pending_buffer, std::move(read_args))) {
         continue;
       }
       return;

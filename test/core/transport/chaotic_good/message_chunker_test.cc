@@ -24,24 +24,19 @@
 namespace grpc_core {
 namespace {
 
-// One frame for this test is one of the message carrying frame types.
-using Frame =
-    absl::variant<chaotic_good::BeginMessageFrame,
-                  chaotic_good::MessageChunkFrame, chaotic_good::MessageFrame>;
-
 // This type looks like an mpsc for sending frames, but simply accumulates
 // frames so we can look at them at the end of the test and ensure they're
 // correct.
 struct Sender {
-  std::vector<Frame> frames;
+  std::vector<chaotic_good::Frame> frames;
   Sender() = default;
   Sender(const Sender&) = delete;
   Sender(Sender&&) = delete;
   Sender& operator=(const Sender&) = delete;
   Sender& operator=(Sender&&) = delete;
-  auto Send(Frame frame) {
-    frames.emplace_back(std::move(frame));
-    return []() -> Poll<bool> { return true; };
+  auto Send(chaotic_good::OutgoingFrame frame) {
+    frames.emplace_back(std::move(frame.payload));
+    return []() -> Poll<StatusFlag> { return Success{}; };
   }
 };
 
@@ -53,12 +48,12 @@ void MessageChunkerTest(uint32_t max_chunk_size, uint32_t alignment,
   EXPECT_THAT(chunker.Send(Arena::MakePooled<Message>(
                                SliceBuffer(Slice::FromCopiedString(payload)),
                                message_flags),
-                           stream_id, sender)(),
-              IsReady(true));
+                           stream_id, nullptr, sender)(),
+              IsReady(Success{}));
   if (max_chunk_size == 0) {
     // No chunking ==> one frame with just a message.
     EXPECT_EQ(sender.frames.size(), 1);
-    auto& f = absl::get<chaotic_good::MessageFrame>(sender.frames[0]);
+    auto& f = std::get<chaotic_good::MessageFrame>(sender.frames[0]);
     EXPECT_EQ(f.message->payload()->JoinIntoString(), payload);
     EXPECT_EQ(f.stream_id, stream_id);
   } else {
@@ -67,18 +62,18 @@ void MessageChunkerTest(uint32_t max_chunk_size, uint32_t alignment,
     if (sender.frames.size() == 1) {
       // If just one frame, it'd better be one of the old-style message frames.
       EXPECT_LE(payload.length(), max_chunk_size);
-      auto& f = absl::get<chaotic_good::MessageFrame>(sender.frames[0]);
+      auto& f = std::get<chaotic_good::MessageFrame>(sender.frames[0]);
       EXPECT_EQ(f.message->payload()->JoinIntoString(), payload);
       EXPECT_EQ(f.stream_id, stream_id);
     } else {
       // Otherwise we should get a BeginMessage frame followed by a sequence of
       // MessageChunk frames, in payload order.
-      auto& f0 = absl::get<chaotic_good::BeginMessageFrame>(sender.frames[0]);
+      auto& f0 = std::get<chaotic_good::BeginMessageFrame>(sender.frames[0]);
       EXPECT_EQ(f0.stream_id, stream_id);
       EXPECT_EQ(f0.body.length(), payload.length());
       std::string received_payload;
       for (size_t i = 1; i < sender.frames.size(); i++) {
-        auto& f = absl::get<chaotic_good::MessageChunkFrame>(sender.frames[i]);
+        auto& f = std::get<chaotic_good::MessageChunkFrame>(sender.frames[i]);
         EXPECT_LE(f.payload.Length(), max_chunk_size);
         EXPECT_EQ(f.stream_id, stream_id);
         received_payload.append(f.payload.JoinIntoString());

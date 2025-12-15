@@ -13,9 +13,6 @@
 // limitations under the License.
 //
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <numeric>
 #include <string>
 #include <vector>
@@ -23,6 +20,8 @@
 #include "absl/log/log.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "src/core/client_channel/backup_poller.h"
 #include "src/core/config/config_vars.h"
 #include "src/core/lib/address_utils/sockaddr_utils.h"
@@ -369,8 +368,9 @@ class CdsDeletionTest : public XdsEnd2endTest {
 INSTANTIATE_TEST_SUITE_P(XdsTest, CdsDeletionTest,
                          ::testing::Values(XdsTestType()), &XdsTestType::Name);
 
-// Tests that we go into TRANSIENT_FAILURE if the Cluster is deleted.
-TEST_P(CdsDeletionTest, ClusterDeleted) {
+// Tests that we go into TRANSIENT_FAILURE if the Cluster is deleted
+// by default.
+TEST_P(CdsDeletionTest, ClusterDeletedFailsByDefault) {
   InitClient();
   CreateAndStartBackends(1);
   EdsResourceArgs args({{"locality0", CreateEndpointsForBackends()}});
@@ -390,7 +390,8 @@ TEST_P(CdsDeletionTest, ClusterDeleted) {
   EXPECT_EQ(response_state->state, AdsServiceImpl::ResponseState::ACKED);
 }
 
-// Tests that we ignore Cluster deletions if configured to do so.
+// Tests that we ignore Cluster deletions if ignore_resource_deletions
+// is set.
 TEST_P(CdsDeletionTest, ClusterDeletionIgnored) {
   InitClient(MakeBootstrapBuilder().SetIgnoreResourceDeletion());
   CreateAndStartBackends(2);
@@ -424,6 +425,71 @@ TEST_P(CdsDeletionTest, ClusterDeletionIgnored) {
       BuildEdsResource(args, kNewEdsResourceName));
   // Wait for client to start using backend 1.
   WaitForAllBackends(DEBUG_LOCATION, 1, 2);
+}
+
+// Tests that we ignore Cluster deletions by default if data error
+// handling is enabled.
+TEST_P(CdsDeletionTest,
+       ClusterDeletionIgnoredByDefaultWithDataErrorHandlingEnabled) {
+  grpc_core::testing::ScopedExperimentalEnvVar env(
+      "GRPC_EXPERIMENTAL_XDS_DATA_ERROR_HANDLING");
+  InitClient();
+  CreateAndStartBackends(2);
+  // Bring up client pointing to backend 0 and wait for it to connect.
+  EdsResourceArgs args({{"locality0", CreateEndpointsForBackends(0, 1)}});
+  balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
+  WaitForAllBackends(DEBUG_LOCATION, 0, 1);
+  // Make sure we ACKed the CDS update.
+  auto response_state = balancer_->ads_service()->cds_response_state();
+  ASSERT_TRUE(response_state.has_value());
+  EXPECT_EQ(response_state->state, AdsServiceImpl::ResponseState::ACKED);
+  // Unset CDS resource and wait for client to ACK the update.
+  balancer_->ads_service()->UnsetResource(kCdsTypeUrl, kDefaultClusterName);
+  const auto deadline = absl::Now() + absl::Seconds(30);
+  while (true) {
+    ASSERT_LT(absl::Now(), deadline) << "timed out waiting for CDS ACK";
+    response_state = balancer_->ads_service()->cds_response_state();
+    if (response_state.has_value()) break;
+  }
+  EXPECT_EQ(response_state->state, AdsServiceImpl::ResponseState::ACKED);
+  // Make sure we can still send RPCs.
+  CheckRpcSendOk(DEBUG_LOCATION);
+  // Now recreate the CDS resource pointing to a new EDS resource that
+  // specified backend 1, and make sure the client uses it.
+  const char* kNewEdsResourceName = "new_eds_resource_name";
+  auto cluster = default_cluster_;
+  cluster.mutable_eds_cluster_config()->set_service_name(kNewEdsResourceName);
+  balancer_->ads_service()->SetCdsResource(cluster);
+  args = EdsResourceArgs({{"locality0", CreateEndpointsForBackends(1, 2)}});
+  balancer_->ads_service()->SetEdsResource(
+      BuildEdsResource(args, kNewEdsResourceName));
+  // Wait for client to start using backend 1.
+  WaitForAllBackends(DEBUG_LOCATION, 1, 2);
+}
+
+// Tests that we go into TRANSIENT_FAILURE if the Cluster is deleted
+// if data error handling is enabled and fail_on_data_errors is set.
+TEST_P(CdsDeletionTest,
+       ClusterDeletedFailsWithDataErrorHandlingEnabledWithFailOnDataErrors) {
+  grpc_core::testing::ScopedExperimentalEnvVar env(
+      "GRPC_EXPERIMENTAL_XDS_DATA_ERROR_HANDLING");
+  InitClient(MakeBootstrapBuilder().SetFailOnDataErrors());
+  CreateAndStartBackends(1);
+  EdsResourceArgs args({{"locality0", CreateEndpointsForBackends()}});
+  balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
+  // We need to wait for all backends to come online.
+  WaitForAllBackends(DEBUG_LOCATION);
+  // Unset CDS resource.
+  balancer_->ads_service()->UnsetResource(kCdsTypeUrl, kDefaultClusterName);
+  // Wait for RPCs to start failing.
+  SendRpcsUntilFailure(
+      DEBUG_LOCATION, StatusCode::UNAVAILABLE,
+      absl::StrCat("CDS resource ", kDefaultClusterName,
+                   ": does not exist \\(node ID:xds_end2end_test\\)"));
+  // Make sure we ACK'ed the update.
+  auto response_state = balancer_->ads_service()->cds_response_state();
+  ASSERT_TRUE(response_state.has_value());
+  EXPECT_EQ(response_state->state, AdsServiceImpl::ResponseState::ACKED);
 }
 
 //
@@ -535,10 +601,10 @@ TEST_P(EdsTest, LocalityBecomesEmptyWithDeactivatedChildStateUpdate) {
   balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
   // Wait for RPCs to start failing.
   constexpr char kErrorMessage[] =
-      "no children in weighted_target policy: "
+      "no children in weighted_target policy \\("
       "EDS resource eds_service_name: contains empty localities: "
       "\\[\\{region=\"xds_default_locality_region\", "
-      "zone=\"xds_default_locality_zone\", sub_zone=\"locality0\"\\}\\]";
+      "zone=\"xds_default_locality_zone\", sub_zone=\"locality0\"\\}\\]\\)";
   SendRpcsUntilFailure(DEBUG_LOCATION, StatusCode::UNAVAILABLE, kErrorMessage);
   // Shut down backend.  This triggers a connectivity state update from the
   // deactivated child of the weighted_target policy.
@@ -571,8 +637,8 @@ TEST_P(EdsTest, NoLocalities) {
   balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
   // RPCs should fail.
   constexpr char kErrorMessage[] =
-      "no children in weighted_target policy: EDS resource eds_service_name: "
-      "contains no localities";
+      "no children in weighted_target policy "
+      "\\(EDS resource eds_service_name: contains no localities\\)";
   CheckRpcSendFailure(DEBUG_LOCATION, StatusCode::UNAVAILABLE, kErrorMessage);
   // Send EDS resource that has an endpoint.
   args = EdsResourceArgs({{"locality0", CreateEndpointsForBackends()}});
@@ -787,10 +853,10 @@ TEST_P(EdsTest, OneLocalityWithNoEndpoints) {
   balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
   // RPCs should fail.
   constexpr char kErrorMessage[] =
-      "no children in weighted_target policy: "
+      "no children in weighted_target policy \\("
       "EDS resource eds_service_name: contains empty localities: "
       "\\[\\{region=\"xds_default_locality_region\", "
-      "zone=\"xds_default_locality_zone\", sub_zone=\"locality0\"\\}\\]";
+      "zone=\"xds_default_locality_zone\", sub_zone=\"locality0\"\\}\\]\\)";
   CheckRpcSendFailure(DEBUG_LOCATION, StatusCode::UNAVAILABLE, kErrorMessage);
   // Send EDS resource that has an endpoint.
   args = EdsResourceArgs({{"locality0", CreateEndpointsForBackends()}});
@@ -1142,8 +1208,6 @@ INSTANTIATE_TEST_SUITE_P(XdsTest, EdsAuthorityRewriteTest,
                          ::testing::Values(XdsTestType()), &XdsTestType::Name);
 
 TEST_P(EdsAuthorityRewriteTest, AutoAuthorityRewrite) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kAltAuthority1[] = "alt_authority1";
   constexpr char kAltAuthority2[] = "alt_authority2";
   // Note: We use InsecureCreds, since FakeCreds are too picky about
@@ -1192,37 +1256,7 @@ TEST_P(EdsAuthorityRewriteTest, AutoAuthorityRewrite) {
       ::testing::ElementsAre(kAltAuthority1, kAltAuthority2, kServerName));
 }
 
-TEST_P(EdsAuthorityRewriteTest, NoRewriteWithoutEnvVar) {
-  constexpr char kAltAuthority[] = "alt_authority";
-  InitClient(MakeBootstrapBuilder().SetTrustedXdsServer());
-  // Set auto_host_rewrite in the RouteConfig.
-  RouteConfiguration new_route_config = default_route_config_;
-  new_route_config.mutable_virtual_hosts(0)
-      ->mutable_routes(0)
-      ->mutable_route()
-      ->mutable_auto_host_rewrite()
-      ->set_value(true);
-  SetRouteConfiguration(balancer_.get(), new_route_config);
-  // Create a backend with a hostname in EDS.
-  CreateAndStartBackends(1);
-  EdsResourceArgs args(
-      {{"locality0",
-        {CreateEndpoint(0, ::envoy::config::core::v3::HealthStatus::UNKNOWN,
-                        /*lb_weight=*/1, /*additional_backend_indexes=*/{},
-                        /*hostname=*/kAltAuthority)}}});
-  balancer_->ads_service()->SetEdsResource(BuildEdsResource(args));
-  // Send an RPC and check the authority seen on the server side.
-  EchoResponse response;
-  Status status = SendRpc(
-      RpcOptions().set_echo_host_from_authority_header(true), &response);
-  EXPECT_TRUE(status.ok()) << "code=" << status.error_code()
-                           << " message=" << status.error_message();
-  EXPECT_EQ(response.param().host(), kServerName);
-}
-
 TEST_P(EdsAuthorityRewriteTest, NoRewriteIfServerNotTrustedInBootstrap) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kAltAuthority[] = "alt_authority";
   InitClient();
   // Set auto_host_rewrite in the RouteConfig.
@@ -1251,8 +1285,6 @@ TEST_P(EdsAuthorityRewriteTest, NoRewriteIfServerNotTrustedInBootstrap) {
 }
 
 TEST_P(EdsAuthorityRewriteTest, NoRewriteIfNoHostnameInEds) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   InitClient(MakeBootstrapBuilder().SetTrustedXdsServer());
   // Set auto_host_rewrite in the RouteConfig.
   RouteConfiguration new_route_config = default_route_config_;
@@ -1276,8 +1308,6 @@ TEST_P(EdsAuthorityRewriteTest, NoRewriteIfNoHostnameInEds) {
 }
 
 TEST_P(EdsAuthorityRewriteTest, NoRewriteIfNotEnabledInRoute) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kAltAuthority[] = "alt_authority";
   InitClient(MakeBootstrapBuilder().SetTrustedXdsServer());
   // Create a backend with a hostname in EDS.
@@ -1677,15 +1707,14 @@ TEST_P(ClientLoadReportingTest, Vanilla) {
   size_t num_failed_rpcs = 0;
   std::map<std::string, ClientStats::LocalityStats::LoadMetric>
       named_metrics_total;
-  for (const auto& p : client_stats.locality_stats()) {
-    EXPECT_EQ(p.second.total_requests_in_progress, 0U);
-    EXPECT_EQ(
-        p.second.total_issued_requests,
-        p.second.total_successful_requests + p.second.total_error_requests);
-    num_successful_rpcs += p.second.total_successful_requests;
-    num_failed_rpcs += p.second.total_error_requests;
-    for (const auto& s : p.second.load_metrics) {
-      named_metrics_total[s.first] += s.second;
+  for (const auto& [_, stats] : client_stats.locality_stats()) {
+    EXPECT_EQ(stats.total_requests_in_progress, 0U);
+    EXPECT_EQ(stats.total_issued_requests,
+              stats.total_successful_requests + stats.total_error_requests);
+    num_successful_rpcs += stats.total_successful_requests;
+    num_failed_rpcs += stats.total_error_requests;
+    for (const auto& [name, value] : stats.load_metrics) {
+      named_metrics_total[name] += value;
     }
   }
   EXPECT_EQ(num_successful_rpcs, total_successful_rpcs_sent);
@@ -1791,18 +1820,17 @@ TEST_P(ClientLoadReportingTest, OrcaPropagation) {
   ClientStats::LocalityStats::LoadMetric application_utilization;
   std::map<std::string, ClientStats::LocalityStats::LoadMetric>
       named_metrics_total;
-  for (const auto& p : client_stats.locality_stats()) {
-    EXPECT_EQ(p.second.total_requests_in_progress, 0U);
-    EXPECT_EQ(
-        p.second.total_issued_requests,
-        p.second.total_successful_requests + p.second.total_error_requests);
-    num_successful_rpcs += p.second.total_successful_requests;
-    num_failed_rpcs += p.second.total_error_requests;
-    cpu_utilization += p.second.cpu_utilization;
-    mem_utilization += p.second.mem_utilization;
-    application_utilization += p.second.application_utilization;
-    for (const auto& s : p.second.load_metrics) {
-      named_metrics_total[s.first] += s.second;
+  for (const auto& [_, stats] : client_stats.locality_stats()) {
+    EXPECT_EQ(stats.total_requests_in_progress, 0U);
+    EXPECT_EQ(stats.total_issued_requests,
+              stats.total_successful_requests + stats.total_error_requests);
+    num_successful_rpcs += stats.total_successful_requests;
+    num_failed_rpcs += stats.total_error_requests;
+    cpu_utilization += stats.cpu_utilization;
+    mem_utilization += stats.mem_utilization;
+    application_utilization += stats.application_utilization;
+    for (const auto& [name, value] : stats.load_metrics) {
+      named_metrics_total[name] += value;
     }
   }
   EXPECT_EQ(num_successful_rpcs, total_successful_rpcs_sent);
@@ -1909,15 +1937,14 @@ TEST_P(ClientLoadReportingTest, OrcaPropagationNamedMetricsAll) {
   size_t num_failed_rpcs = 0;
   std::map<std::string, ClientStats::LocalityStats::LoadMetric>
       named_metrics_total;
-  for (const auto& p : client_stats.locality_stats()) {
-    EXPECT_EQ(p.second.total_requests_in_progress, 0U);
-    EXPECT_EQ(
-        p.second.total_issued_requests,
-        p.second.total_successful_requests + p.second.total_error_requests);
-    num_successful_rpcs += p.second.total_successful_requests;
-    num_failed_rpcs += p.second.total_error_requests;
-    for (const auto& s : p.second.load_metrics) {
-      named_metrics_total[s.first] += s.second;
+  for (const auto& [_, stats] : client_stats.locality_stats()) {
+    EXPECT_EQ(stats.total_requests_in_progress, 0U);
+    EXPECT_EQ(stats.total_issued_requests,
+              stats.total_successful_requests + stats.total_error_requests);
+    num_successful_rpcs += stats.total_successful_requests;
+    num_failed_rpcs += stats.total_error_requests;
+    for (const auto& [name, value] : stats.load_metrics) {
+      named_metrics_total[name] += value;
     }
   }
   EXPECT_EQ(num_successful_rpcs, total_successful_rpcs_sent);
@@ -2012,15 +2039,14 @@ TEST_P(ClientLoadReportingTest, OrcaPropagationNotConfigured) {
   size_t num_failed_rpcs = 0;
   std::map<std::string, ClientStats::LocalityStats::LoadMetric>
       named_metrics_total;
-  for (const auto& p : client_stats.locality_stats()) {
-    EXPECT_EQ(p.second.total_requests_in_progress, 0U);
-    EXPECT_EQ(
-        p.second.total_issued_requests,
-        p.second.total_successful_requests + p.second.total_error_requests);
-    num_successful_rpcs += p.second.total_successful_requests;
-    num_failed_rpcs += p.second.total_error_requests;
-    for (const auto& s : p.second.load_metrics) {
-      named_metrics_total[s.first] += s.second;
+  for (const auto& [_, stats] : client_stats.locality_stats()) {
+    EXPECT_EQ(stats.total_requests_in_progress, 0U);
+    EXPECT_EQ(stats.total_issued_requests,
+              stats.total_successful_requests + stats.total_error_requests);
+    num_successful_rpcs += stats.total_successful_requests;
+    num_failed_rpcs += stats.total_error_requests;
+    for (const auto& [name, value] : stats.load_metrics) {
+      named_metrics_total[name] += value;
     }
   }
   EXPECT_EQ(num_successful_rpcs, total_successful_rpcs_sent);
