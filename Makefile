@@ -367,8 +367,8 @@ E = @echo
 Q = @
 endif
 
-CORE_VERSION = 45.0.0
-CPP_VERSION = 1.70.1
+CORE_VERSION = 48.0.0
+CPP_VERSION = 1.73.0
 
 CPPFLAGS_NO_ARCH += $(addprefix -I, $(INCLUDES)) $(addprefix -D, $(DEFINES))
 CPPFLAGS += $(CPPFLAGS_NO_ARCH) $(ARCH_FLAGS)
@@ -404,7 +404,7 @@ SHARED_EXT_CORE = dll
 SHARED_EXT_CPP = dll
 
 SHARED_PREFIX =
-SHARED_VERSION_CORE = -45
+SHARED_VERSION_CORE = -48
 SHARED_VERSION_CPP = -1
 else ifeq ($(SYSTEM),Darwin)
 EXECUTABLE_SUFFIX =
@@ -666,7 +666,21 @@ clean:
 # deps: ['cares', 'libssl', 'z']
 # transitive_deps: ['cares', 'libssl', 'z']
 LIBGRPC_SRC = \
+    src/core/call/call_arena_allocator.cc \
+    src/core/call/call_filters.cc \
+    src/core/call/call_spine.cc \
+    src/core/call/call_state.cc \
+    src/core/call/client_call.cc \
+    src/core/call/interception_chain.cc \
+    src/core/call/message.cc \
+    src/core/call/metadata.cc \
+    src/core/call/metadata_batch.cc \
+    src/core/call/metadata_info.cc \
+    src/core/call/parsed_metadata.cc \
     src/core/call/request_buffer.cc \
+    src/core/call/security_context.cc \
+    src/core/call/server_call.cc \
+    src/core/call/status_util.cc \
     src/core/channelz/channel_trace.cc \
     src/core/channelz/channelz.cc \
     src/core/channelz/channelz_registry.cc \
@@ -694,6 +708,60 @@ LIBGRPC_SRC = \
     src/core/config/config_vars_non_generated.cc \
     src/core/config/core_configuration.cc \
     src/core/config/load_config.cc \
+    src/core/credentials/call/call_creds_util.cc \
+    src/core/credentials/call/composite/composite_call_credentials.cc \
+    src/core/credentials/call/external/aws_external_account_credentials.cc \
+    src/core/credentials/call/external/aws_request_signer.cc \
+    src/core/credentials/call/external/external_account_credentials.cc \
+    src/core/credentials/call/external/file_external_account_credentials.cc \
+    src/core/credentials/call/external/url_external_account_credentials.cc \
+    src/core/credentials/call/gcp_service_account_identity/gcp_service_account_identity_credentials.cc \
+    src/core/credentials/call/iam/iam_credentials.cc \
+    src/core/credentials/call/json_util.cc \
+    src/core/credentials/call/jwt/json_token.cc \
+    src/core/credentials/call/jwt/jwt_credentials.cc \
+    src/core/credentials/call/jwt/jwt_verifier.cc \
+    src/core/credentials/call/oauth2/oauth2_credentials.cc \
+    src/core/credentials/call/plugin/plugin_credentials.cc \
+    src/core/credentials/call/token_fetcher/token_fetcher_credentials.cc \
+    src/core/credentials/transport/alts/alts_credentials.cc \
+    src/core/credentials/transport/alts/alts_security_connector.cc \
+    src/core/credentials/transport/alts/check_gcp_environment.cc \
+    src/core/credentials/transport/alts/check_gcp_environment_linux.cc \
+    src/core/credentials/transport/alts/check_gcp_environment_no_op.cc \
+    src/core/credentials/transport/alts/check_gcp_environment_windows.cc \
+    src/core/credentials/transport/alts/grpc_alts_credentials_client_options.cc \
+    src/core/credentials/transport/alts/grpc_alts_credentials_options.cc \
+    src/core/credentials/transport/alts/grpc_alts_credentials_server_options.cc \
+    src/core/credentials/transport/channel_creds_registry_init.cc \
+    src/core/credentials/transport/composite/composite_channel_credentials.cc \
+    src/core/credentials/transport/fake/fake_credentials.cc \
+    src/core/credentials/transport/fake/fake_security_connector.cc \
+    src/core/credentials/transport/google_default/credentials_generic.cc \
+    src/core/credentials/transport/google_default/google_default_credentials.cc \
+    src/core/credentials/transport/insecure/insecure_credentials.cc \
+    src/core/credentials/transport/insecure/insecure_security_connector.cc \
+    src/core/credentials/transport/local/local_credentials.cc \
+    src/core/credentials/transport/local/local_security_connector.cc \
+    src/core/credentials/transport/security_connector.cc \
+    src/core/credentials/transport/ssl/ssl_credentials.cc \
+    src/core/credentials/transport/ssl/ssl_security_connector.cc \
+    src/core/credentials/transport/tls/certificate_provider_registry.cc \
+    src/core/credentials/transport/tls/grpc_tls_certificate_distributor.cc \
+    src/core/credentials/transport/tls/grpc_tls_certificate_match.cc \
+    src/core/credentials/transport/tls/grpc_tls_certificate_provider.cc \
+    src/core/credentials/transport/tls/grpc_tls_certificate_verifier.cc \
+    src/core/credentials/transport/tls/grpc_tls_credentials_options.cc \
+    src/core/credentials/transport/tls/grpc_tls_crl_provider.cc \
+    src/core/credentials/transport/tls/load_system_roots_fallback.cc \
+    src/core/credentials/transport/tls/load_system_roots_supported.cc \
+    src/core/credentials/transport/tls/load_system_roots_windows.cc \
+    src/core/credentials/transport/tls/ssl_utils.cc \
+    src/core/credentials/transport/tls/tls_credentials.cc \
+    src/core/credentials/transport/tls/tls_security_connector.cc \
+    src/core/credentials/transport/tls/tls_utils.cc \
+    src/core/credentials/transport/transport_credentials.cc \
+    src/core/credentials/transport/xds/xds_credentials.cc \
     src/core/ext/filters/backend_metrics/backend_metric_filter.cc \
     src/core/ext/filters/census/grpc_context.cc \
     src/core/ext/filters/channel_idle/idle_filter_state.cc \
@@ -713,6 +781,7 @@ LIBGRPC_SRC = \
     src/core/ext/filters/stateful_session/stateful_session_filter.cc \
     src/core/ext/filters/stateful_session/stateful_session_service_config_parser.cc \
     src/core/ext/transport/chttp2/alpn/alpn.cc \
+    src/core/ext/transport/chttp2/chttp2_plugin.cc \
     src/core/ext/transport/chttp2/client/chttp2_connector.cc \
     src/core/ext/transport/chttp2/server/chttp2_server.cc \
     src/core/ext/transport/chttp2/transport/bin_decoder.cc \
@@ -838,6 +907,7 @@ LIBGRPC_SRC = \
     src/core/ext/upb-gen/envoy/service/status/v3/csds.upb_minitable.c \
     src/core/ext/upb-gen/envoy/type/http/v3/cookie.upb_minitable.c \
     src/core/ext/upb-gen/envoy/type/http/v3/path_transformation.upb_minitable.c \
+    src/core/ext/upb-gen/envoy/type/matcher/v3/address.upb_minitable.c \
     src/core/ext/upb-gen/envoy/type/matcher/v3/filter_state.upb_minitable.c \
     src/core/ext/upb-gen/envoy/type/matcher/v3/http_inputs.upb_minitable.c \
     src/core/ext/upb-gen/envoy/type/matcher/v3/metadata.upb_minitable.c \
@@ -999,6 +1069,7 @@ LIBGRPC_SRC = \
     src/core/ext/upbdefs-gen/envoy/service/status/v3/csds.upbdefs.c \
     src/core/ext/upbdefs-gen/envoy/type/http/v3/cookie.upbdefs.c \
     src/core/ext/upbdefs-gen/envoy/type/http/v3/path_transformation.upbdefs.c \
+    src/core/ext/upbdefs-gen/envoy/type/matcher/v3/address.upbdefs.c \
     src/core/ext/upbdefs-gen/envoy/type/matcher/v3/filter_state.upbdefs.c \
     src/core/ext/upbdefs-gen/envoy/type/matcher/v3/http_inputs.upbdefs.c \
     src/core/ext/upbdefs-gen/envoy/type/matcher/v3/metadata.upbdefs.c \
@@ -1065,6 +1136,8 @@ LIBGRPC_SRC = \
     src/core/ext/upbdefs-gen/xds/type/v3/cel.upbdefs.c \
     src/core/ext/upbdefs-gen/xds/type/v3/range.upbdefs.c \
     src/core/ext/upbdefs-gen/xds/type/v3/typed_struct.upbdefs.c \
+    src/core/filter/auth/client_auth_filter.cc \
+    src/core/filter/auth/server_auth_filter.cc \
     src/core/filter/blackboard.cc \
     src/core/handshaker/endpoint_info/endpoint_info_handshaker.cc \
     src/core/handshaker/handshaker.cc \
@@ -1073,6 +1146,7 @@ LIBGRPC_SRC = \
     src/core/handshaker/http_connect/http_proxy_mapper.cc \
     src/core/handshaker/http_connect/xds_http_proxy_mapper.cc \
     src/core/handshaker/proxy_mapper_registry.cc \
+    src/core/handshaker/security/legacy_secure_endpoint.cc \
     src/core/handshaker/security/secure_endpoint.cc \
     src/core/handshaker/security/security_handshaker.cc \
     src/core/handshaker/tcp_connect/tcp_connect_handshaker.cc \
@@ -1085,7 +1159,6 @@ LIBGRPC_SRC = \
     src/core/lib/channel/channel_stack_builder_impl.cc \
     src/core/lib/channel/connected_channel.cc \
     src/core/lib/channel/promise_based_filter.cc \
-    src/core/lib/channel/status_util.cc \
     src/core/lib/compression/compression.cc \
     src/core/lib/compression/compression_internal.cc \
     src/core/lib/compression/message_compress.cc \
@@ -1110,6 +1183,7 @@ LIBGRPC_SRC = \
     src/core/lib/event_engine/posix_engine/posix_engine.cc \
     src/core/lib/event_engine/posix_engine/posix_engine_listener.cc \
     src/core/lib/event_engine/posix_engine/posix_engine_listener_utils.cc \
+    src/core/lib/event_engine/posix_engine/set_socket_dualstack.cc \
     src/core/lib/event_engine/posix_engine/tcp_socket_utils.cc \
     src/core/lib/event_engine/posix_engine/timer.cc \
     src/core/lib/event_engine/posix_engine/timer_heap.cc \
@@ -1160,7 +1234,6 @@ LIBGRPC_SRC = \
     src/core/lib/iomgr/event_engine_shims/endpoint.cc \
     src/core/lib/iomgr/event_engine_shims/tcp_client.cc \
     src/core/lib/iomgr/exec_ctx.cc \
-    src/core/lib/iomgr/executor.cc \
     src/core/lib/iomgr/fork_posix.cc \
     src/core/lib/iomgr/fork_windows.cc \
     src/core/lib/iomgr/internal_errqueue.cc \
@@ -1229,62 +1302,6 @@ LIBGRPC_SRC = \
     src/core/lib/security/authorization/matchers.cc \
     src/core/lib/security/authorization/rbac_policy.cc \
     src/core/lib/security/authorization/stdout_logger.cc \
-    src/core/lib/security/certificate_provider/certificate_provider_registry.cc \
-    src/core/lib/security/context/security_context.cc \
-    src/core/lib/security/credentials/alts/alts_credentials.cc \
-    src/core/lib/security/credentials/alts/check_gcp_environment.cc \
-    src/core/lib/security/credentials/alts/check_gcp_environment_linux.cc \
-    src/core/lib/security/credentials/alts/check_gcp_environment_no_op.cc \
-    src/core/lib/security/credentials/alts/check_gcp_environment_windows.cc \
-    src/core/lib/security/credentials/alts/grpc_alts_credentials_client_options.cc \
-    src/core/lib/security/credentials/alts/grpc_alts_credentials_options.cc \
-    src/core/lib/security/credentials/alts/grpc_alts_credentials_server_options.cc \
-    src/core/lib/security/credentials/call_creds_util.cc \
-    src/core/lib/security/credentials/channel_creds_registry_init.cc \
-    src/core/lib/security/credentials/composite/composite_credentials.cc \
-    src/core/lib/security/credentials/credentials.cc \
-    src/core/lib/security/credentials/external/aws_external_account_credentials.cc \
-    src/core/lib/security/credentials/external/aws_request_signer.cc \
-    src/core/lib/security/credentials/external/external_account_credentials.cc \
-    src/core/lib/security/credentials/external/file_external_account_credentials.cc \
-    src/core/lib/security/credentials/external/url_external_account_credentials.cc \
-    src/core/lib/security/credentials/fake/fake_credentials.cc \
-    src/core/lib/security/credentials/gcp_service_account_identity/gcp_service_account_identity_credentials.cc \
-    src/core/lib/security/credentials/google_default/credentials_generic.cc \
-    src/core/lib/security/credentials/google_default/google_default_credentials.cc \
-    src/core/lib/security/credentials/iam/iam_credentials.cc \
-    src/core/lib/security/credentials/insecure/insecure_credentials.cc \
-    src/core/lib/security/credentials/jwt/json_token.cc \
-    src/core/lib/security/credentials/jwt/jwt_credentials.cc \
-    src/core/lib/security/credentials/jwt/jwt_verifier.cc \
-    src/core/lib/security/credentials/local/local_credentials.cc \
-    src/core/lib/security/credentials/oauth2/oauth2_credentials.cc \
-    src/core/lib/security/credentials/plugin/plugin_credentials.cc \
-    src/core/lib/security/credentials/ssl/ssl_credentials.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_certificate_distributor.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_certificate_match.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_certificate_provider.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_certificate_verifier.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_credentials_options.cc \
-    src/core/lib/security/credentials/tls/grpc_tls_crl_provider.cc \
-    src/core/lib/security/credentials/tls/tls_credentials.cc \
-    src/core/lib/security/credentials/tls/tls_utils.cc \
-    src/core/lib/security/credentials/token_fetcher/token_fetcher_credentials.cc \
-    src/core/lib/security/credentials/xds/xds_credentials.cc \
-    src/core/lib/security/security_connector/alts/alts_security_connector.cc \
-    src/core/lib/security/security_connector/fake/fake_security_connector.cc \
-    src/core/lib/security/security_connector/insecure/insecure_security_connector.cc \
-    src/core/lib/security/security_connector/load_system_roots_fallback.cc \
-    src/core/lib/security/security_connector/load_system_roots_supported.cc \
-    src/core/lib/security/security_connector/load_system_roots_windows.cc \
-    src/core/lib/security/security_connector/local/local_security_connector.cc \
-    src/core/lib/security/security_connector/security_connector.cc \
-    src/core/lib/security/security_connector/ssl/ssl_security_connector.cc \
-    src/core/lib/security/security_connector/ssl_utils.cc \
-    src/core/lib/security/security_connector/tls/tls_security_connector.cc \
-    src/core/lib/security/transport/client_auth_filter.cc \
-    src/core/lib/security/transport/server_auth_filter.cc \
-    src/core/lib/security/util/json_util.cc \
     src/core/lib/slice/percent_encoding.cc \
     src/core/lib/slice/slice.cc \
     src/core/lib/slice/slice_buffer.cc \
@@ -1299,7 +1316,6 @@ LIBGRPC_SRC = \
     src/core/lib/surface/channel_create.cc \
     src/core/lib/surface/channel_init.cc \
     src/core/lib/surface/channel_stack_type.cc \
-    src/core/lib/surface/client_call.cc \
     src/core/lib/surface/completion_queue.cc \
     src/core/lib/surface/completion_queue_factory.cc \
     src/core/lib/surface/connection_context.cc \
@@ -1310,23 +1326,12 @@ LIBGRPC_SRC = \
     src/core/lib/surface/lame_client.cc \
     src/core/lib/surface/legacy_channel.cc \
     src/core/lib/surface/metadata_array.cc \
-    src/core/lib/surface/server_call.cc \
     src/core/lib/surface/validate_metadata.cc \
     src/core/lib/surface/version.cc \
     src/core/lib/transport/bdp_estimator.cc \
-    src/core/lib/transport/call_arena_allocator.cc \
-    src/core/lib/transport/call_filters.cc \
     src/core/lib/transport/call_final_info.cc \
-    src/core/lib/transport/call_spine.cc \
-    src/core/lib/transport/call_state.cc \
     src/core/lib/transport/connectivity_state.cc \
     src/core/lib/transport/error_utils.cc \
-    src/core/lib/transport/interception_chain.cc \
-    src/core/lib/transport/message.cc \
-    src/core/lib/transport/metadata.cc \
-    src/core/lib/transport/metadata_batch.cc \
-    src/core/lib/transport/metadata_info.cc \
-    src/core/lib/transport/parsed_metadata.cc \
     src/core/lib/transport/status_conversion.cc \
     src/core/lib/transport/timeout_encoding.cc \
     src/core/lib/transport/transport.cc \
@@ -1380,6 +1385,7 @@ LIBGRPC_SRC = \
     src/core/resolver/xds/xds_config.cc \
     src/core/resolver/xds/xds_dependency_manager.cc \
     src/core/resolver/xds/xds_resolver.cc \
+    src/core/server/add_port.cc \
     src/core/server/server.cc \
     src/core/server/server_call_tracer_filter.cc \
     src/core/server/server_config_selector_filter.cc \
@@ -1389,10 +1395,14 @@ LIBGRPC_SRC = \
     src/core/service_config/service_config_impl.cc \
     src/core/service_config/service_config_parser.cc \
     src/core/telemetry/call_tracer.cc \
+    src/core/telemetry/default_tcp_tracer.cc \
     src/core/telemetry/histogram_view.cc \
     src/core/telemetry/metrics.cc \
     src/core/telemetry/stats.cc \
     src/core/telemetry/stats_data.cc \
+    src/core/telemetry/tcp_tracer.cc \
+    src/core/transport/auth_context.cc \
+    src/core/transport/endpoint_transport_client_channel_factory.cc \
     src/core/tsi/alts/crypt/aes_gcm.cc \
     src/core/tsi/alts/crypt/gsec.cc \
     src/core/tsi/alts/frame_protector/alts_counter.cc \
@@ -1467,6 +1477,7 @@ LIBGRPC_SRC = \
     src/core/util/posix/tmpfile.cc \
     src/core/util/random_early_detection.cc \
     src/core/util/ref_counted_string.cc \
+    src/core/util/shared_bit_gen.cc \
     src/core/util/status_helper.cc \
     src/core/util/strerror.cc \
     src/core/util/string.cc \
@@ -1534,6 +1545,7 @@ LIBGRPC_SRC = \
     third_party/abseil-cpp/absl/base/internal/sysinfo.cc \
     third_party/abseil-cpp/absl/base/internal/thread_identity.cc \
     third_party/abseil-cpp/absl/base/internal/throw_delegate.cc \
+    third_party/abseil-cpp/absl/base/internal/tracing.cc \
     third_party/abseil-cpp/absl/base/internal/unscaledcycleclock.cc \
     third_party/abseil-cpp/absl/base/log_severity.cc \
     third_party/abseil-cpp/absl/container/internal/hashtablez_sampler.cc \
@@ -1555,6 +1567,7 @@ LIBGRPC_SRC = \
     third_party/abseil-cpp/absl/debugging/internal/examine_stack.cc \
     third_party/abseil-cpp/absl/debugging/internal/utf8_for_code_point.cc \
     third_party/abseil-cpp/absl/debugging/internal/vdso_support.cc \
+    third_party/abseil-cpp/absl/debugging/leak_check.cc \
     third_party/abseil-cpp/absl/debugging/stacktrace.cc \
     third_party/abseil-cpp/absl/debugging/symbolize.cc \
     third_party/abseil-cpp/absl/flags/commandlineflag.cc \
@@ -1578,6 +1591,7 @@ LIBGRPC_SRC = \
     third_party/abseil-cpp/absl/log/internal/log_sink_set.cc \
     third_party/abseil-cpp/absl/log/internal/nullguard.cc \
     third_party/abseil-cpp/absl/log/internal/proto.cc \
+    third_party/abseil-cpp/absl/log/internal/structured_proto.cc \
     third_party/abseil-cpp/absl/log/internal/vlog_config.cc \
     third_party/abseil-cpp/absl/log/log_entry.cc \
     third_party/abseil-cpp/absl/log/log_sink.cc \
@@ -1704,8 +1718,8 @@ LIBGRPC_SRC = \
     third_party/upb/upb/message/array.c \
     third_party/upb/upb/message/compat.c \
     third_party/upb/upb/message/copy.c \
-    third_party/upb/upb/message/internal/compare_unknown.c \
     third_party/upb/upb/message/internal/extension.c \
+    third_party/upb/upb/message/internal/iterator.c \
     third_party/upb/upb/message/internal/message.c \
     third_party/upb/upb/message/map.c \
     third_party/upb/upb/message/map_sorter.c \
@@ -1756,6 +1770,7 @@ PUBLIC_HEADERS_C += \
     include/grpc/event_engine/extensible.h \
     include/grpc/event_engine/internal/memory_allocator_impl.h \
     include/grpc/event_engine/internal/slice_cast.h \
+    include/grpc/event_engine/internal/write_event.h \
     include/grpc/event_engine/memory_allocator.h \
     include/grpc/event_engine/memory_request.h \
     include/grpc/event_engine/port.h \
@@ -1768,30 +1783,15 @@ PUBLIC_HEADERS_C += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security.h \
     include/grpc/grpc_security_constants.h \
-    include/grpc/impl/call.h \
     include/grpc/impl/channel_arg_names.h \
-    include/grpc/impl/codegen/atm.h \
-    include/grpc/impl/codegen/atm_gcc_atomic.h \
-    include/grpc/impl/codegen/atm_gcc_sync.h \
-    include/grpc/impl/codegen/atm_windows.h \
     include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
-    include/grpc/impl/codegen/fork.h \
-    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/grpc_types.h \
-    include/grpc/impl/codegen/log.h \
-    include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/slice.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/sync.h \
-    include/grpc/impl/codegen/sync_abseil.h \
-    include/grpc/impl/codegen/sync_custom.h \
-    include/grpc/impl/codegen/sync_generic.h \
-    include/grpc/impl/codegen/sync_posix.h \
-    include/grpc/impl/codegen/sync_windows.h \
     include/grpc/impl/compression_types.h \
     include/grpc/impl/connectivity_state.h \
     include/grpc/impl/grpc_types.h \
@@ -1802,25 +1802,6 @@ PUBLIC_HEADERS_C += \
     include/grpc/slice.h \
     include/grpc/slice_buffer.h \
     include/grpc/status.h \
-    include/grpc/support/alloc.h \
-    include/grpc/support/atm_gcc_atomic.h \
-    include/grpc/support/atm_gcc_sync.h \
-    include/grpc/support/atm_windows.h \
-    include/grpc/support/cpu.h \
-    include/grpc/support/json.h \
-    include/grpc/support/log.h \
-    include/grpc/support/log_windows.h \
-    include/grpc/support/metrics.h \
-    include/grpc/support/port_platform.h \
-    include/grpc/support/string_util.h \
-    include/grpc/support/sync.h \
-    include/grpc/support/sync_abseil.h \
-    include/grpc/support/sync_custom.h \
-    include/grpc/support/sync_generic.h \
-    include/grpc/support/sync_posix.h \
-    include/grpc/support/sync_windows.h \
-    include/grpc/support/thd_id.h \
-    include/grpc/support/time.h \
     include/grpc/support/workaround_list.h \
 
 LIBGRPC_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(LIBGRPC_SRC))))
@@ -1859,8 +1840,8 @@ $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE): $(LIBGRPC_
 ifeq ($(SYSTEM),Darwin)
 	$(Q) $(LDXX) $(LDFLAGS) -L$(LIBDIR)/$(CONFIG) -install_name $(SHARED_PREFIX)grpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) -dynamiclib -o $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBGRPC_OBJS) $(LIBDIR)/$(CONFIG)/libcares.a $(OPENSSL_MERGE_LIBS) $(ZLIB_MERGE_LIBS) $(LDLIBS_SECURE) $(LDLIBS)
 else
-	$(Q) $(LDXX) $(LDFLAGS) -L$(LIBDIR)/$(CONFIG) -shared -Wl,-soname,libgrpc.so.45 -o $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBGRPC_OBJS) $(LIBDIR)/$(CONFIG)/libcares.a $(OPENSSL_MERGE_LIBS) $(ZLIB_MERGE_LIBS) $(LDLIBS_SECURE) $(LDLIBS)
-	$(Q) ln -sf $(SHARED_PREFIX)grpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).so.45
+	$(Q) $(LDXX) $(LDFLAGS) -L$(LIBDIR)/$(CONFIG) -shared -Wl,-soname,libgrpc.so.48 -o $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBGRPC_OBJS) $(LIBDIR)/$(CONFIG)/libcares.a $(OPENSSL_MERGE_LIBS) $(ZLIB_MERGE_LIBS) $(LDLIBS_SECURE) $(LDLIBS)
+	$(Q) ln -sf $(SHARED_PREFIX)grpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).so.48
 	$(Q) ln -sf $(SHARED_PREFIX)grpc$(SHARED_VERSION_CORE).$(SHARED_EXT_CORE) $(LIBDIR)/$(CONFIG)/libgrpc$(SHARED_VERSION_CORE).so
 endif
 endif
@@ -1879,6 +1860,7 @@ endif
 # deps: []
 # transitive_deps: []
 LIBBORINGSSL_SRC = \
+    third_party/boringssl-with-bazel/src/crypto/aes/aes.cc \
     third_party/boringssl-with-bazel/src/crypto/asn1/a_bitstr.cc \
     third_party/boringssl-with-bazel/src/crypto/asn1/a_bool.cc \
     third_party/boringssl-with-bazel/src/crypto/asn1/a_d2i_fp.cc \
@@ -1919,8 +1901,11 @@ LIBBORINGSSL_SRC = \
     third_party/boringssl-with-bazel/src/crypto/bio/socket.cc \
     third_party/boringssl-with-bazel/src/crypto/bio/socket_helper.cc \
     third_party/boringssl-with-bazel/src/crypto/blake2/blake2.cc \
-    third_party/boringssl-with-bazel/src/crypto/bn_extra/bn_asn1.cc \
-    third_party/boringssl-with-bazel/src/crypto/bn_extra/convert.cc \
+    third_party/boringssl-with-bazel/src/crypto/bn/bn_asn1.cc \
+    third_party/boringssl-with-bazel/src/crypto/bn/convert.cc \
+    third_party/boringssl-with-bazel/src/crypto/bn/div.cc \
+    third_party/boringssl-with-bazel/src/crypto/bn/exponentiation.cc \
+    third_party/boringssl-with-bazel/src/crypto/bn/sqrt.cc \
     third_party/boringssl-with-bazel/src/crypto/buf/buf.cc \
     third_party/boringssl-with-bazel/src/crypto/bytestring/asn1_compat.cc \
     third_party/boringssl-with-bazel/src/crypto/bytestring/ber.cc \
@@ -1928,17 +1913,19 @@ LIBBORINGSSL_SRC = \
     third_party/boringssl-with-bazel/src/crypto/bytestring/cbs.cc \
     third_party/boringssl-with-bazel/src/crypto/bytestring/unicode.cc \
     third_party/boringssl-with-bazel/src/crypto/chacha/chacha.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/cipher_extra.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/derive_key.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_aesctrhmac.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_aesgcmsiv.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_chacha20poly1305.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_des.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_null.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_rc2.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_rc4.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/e_tls.cc \
-    third_party/boringssl-with-bazel/src/crypto/cipher_extra/tls_cbc.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/derive_key.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_aesctrhmac.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_aeseax.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_aesgcmsiv.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_chacha20poly1305.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_des.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_null.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_rc2.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_rc4.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/e_tls.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/get_cipher.cc \
+    third_party/boringssl-with-bazel/src/crypto/cipher/tls_cbc.cc \
+    third_party/boringssl-with-bazel/src/crypto/cms/cms.cc \
     third_party/boringssl-with-bazel/src/crypto/conf/conf.cc \
     third_party/boringssl-with-bazel/src/crypto/cpu_aarch64_apple.cc \
     third_party/boringssl-with-bazel/src/crypto/cpu_aarch64_fuchsia.cc \
@@ -1954,16 +1941,16 @@ LIBBORINGSSL_SRC = \
     third_party/boringssl-with-bazel/src/crypto/curve25519/curve25519_64_adx.cc \
     third_party/boringssl-with-bazel/src/crypto/curve25519/spake25519.cc \
     third_party/boringssl-with-bazel/src/crypto/des/des.cc \
-    third_party/boringssl-with-bazel/src/crypto/dh_extra/dh_asn1.cc \
-    third_party/boringssl-with-bazel/src/crypto/dh_extra/params.cc \
-    third_party/boringssl-with-bazel/src/crypto/digest_extra/digest_extra.cc \
+    third_party/boringssl-with-bazel/src/crypto/dh/dh_asn1.cc \
+    third_party/boringssl-with-bazel/src/crypto/dh/params.cc \
+    third_party/boringssl-with-bazel/src/crypto/digest/digest_extra.cc \
     third_party/boringssl-with-bazel/src/crypto/dsa/dsa.cc \
     third_party/boringssl-with-bazel/src/crypto/dsa/dsa_asn1.cc \
-    third_party/boringssl-with-bazel/src/crypto/ec_extra/ec_asn1.cc \
-    third_party/boringssl-with-bazel/src/crypto/ec_extra/ec_derive.cc \
-    third_party/boringssl-with-bazel/src/crypto/ec_extra/hash_to_curve.cc \
-    third_party/boringssl-with-bazel/src/crypto/ecdh_extra/ecdh_extra.cc \
-    third_party/boringssl-with-bazel/src/crypto/ecdsa_extra/ecdsa_asn1.cc \
+    third_party/boringssl-with-bazel/src/crypto/ec/ec_asn1.cc \
+    third_party/boringssl-with-bazel/src/crypto/ec/ec_derive.cc \
+    third_party/boringssl-with-bazel/src/crypto/ec/hash_to_curve.cc \
+    third_party/boringssl-with-bazel/src/crypto/ecdh/ecdh.cc \
+    third_party/boringssl-with-bazel/src/crypto/ecdsa/ecdsa_asn1.cc \
     third_party/boringssl-with-bazel/src/crypto/engine/engine.cc \
     third_party/boringssl-with-bazel/src/crypto/err/err.cc \
     third_party/boringssl-with-bazel/src/crypto/evp/evp.cc \
@@ -1988,9 +1975,9 @@ LIBBORINGSSL_SRC = \
     third_party/boringssl-with-bazel/src/crypto/ex_data.cc \
     third_party/boringssl-with-bazel/src/crypto/fipsmodule/bcm.cc \
     third_party/boringssl-with-bazel/src/crypto/fipsmodule/fips_shared_support.cc \
+    third_party/boringssl-with-bazel/src/crypto/fuzzer_mode.cc \
     third_party/boringssl-with-bazel/src/crypto/hpke/hpke.cc \
     third_party/boringssl-with-bazel/src/crypto/hrss/hrss.cc \
-    third_party/boringssl-with-bazel/src/crypto/keccak/keccak.cc \
     third_party/boringssl-with-bazel/src/crypto/kyber/kyber.cc \
     third_party/boringssl-with-bazel/src/crypto/lhash/lhash.cc \
     third_party/boringssl-with-bazel/src/crypto/md4/md4.cc \
@@ -2017,31 +2004,28 @@ LIBBORINGSSL_SRC = \
     third_party/boringssl-with-bazel/src/crypto/poly1305/poly1305_arm.cc \
     third_party/boringssl-with-bazel/src/crypto/poly1305/poly1305_vec.cc \
     third_party/boringssl-with-bazel/src/crypto/pool/pool.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/deterministic.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/fork_detect.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/forkunsafe.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/getentropy.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/ios.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/passive.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/rand_extra.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/trusty.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/urandom.cc \
-    third_party/boringssl-with-bazel/src/crypto/rand_extra/windows.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/deterministic.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/fork_detect.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/forkunsafe.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/getentropy.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/ios.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/passive.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/rand.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/trusty.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/urandom.cc \
+    third_party/boringssl-with-bazel/src/crypto/rand/windows.cc \
     third_party/boringssl-with-bazel/src/crypto/rc4/rc4.cc \
     third_party/boringssl-with-bazel/src/crypto/refcount.cc \
-    third_party/boringssl-with-bazel/src/crypto/rsa_extra/rsa_asn1.cc \
-    third_party/boringssl-with-bazel/src/crypto/rsa_extra/rsa_crypt.cc \
-    third_party/boringssl-with-bazel/src/crypto/rsa_extra/rsa_extra.cc \
-    third_party/boringssl-with-bazel/src/crypto/rsa_extra/rsa_print.cc \
+    third_party/boringssl-with-bazel/src/crypto/rsa/rsa_asn1.cc \
+    third_party/boringssl-with-bazel/src/crypto/rsa/rsa_crypt.cc \
+    third_party/boringssl-with-bazel/src/crypto/rsa/rsa_extra.cc \
+    third_party/boringssl-with-bazel/src/crypto/rsa/rsa_print.cc \
     third_party/boringssl-with-bazel/src/crypto/sha/sha1.cc \
     third_party/boringssl-with-bazel/src/crypto/sha/sha256.cc \
     third_party/boringssl-with-bazel/src/crypto/sha/sha512.cc \
     third_party/boringssl-with-bazel/src/crypto/siphash/siphash.cc \
-    third_party/boringssl-with-bazel/src/crypto/slhdsa/fors.cc \
-    third_party/boringssl-with-bazel/src/crypto/slhdsa/merkle.cc \
     third_party/boringssl-with-bazel/src/crypto/slhdsa/slhdsa.cc \
-    third_party/boringssl-with-bazel/src/crypto/slhdsa/thash.cc \
-    third_party/boringssl-with-bazel/src/crypto/slhdsa/wots.cc \
+    third_party/boringssl-with-bazel/src/crypto/spake2plus/spake2plus.cc \
     third_party/boringssl-with-bazel/src/crypto/stack/stack.cc \
     third_party/boringssl-with-bazel/src/crypto/thread.cc \
     third_party/boringssl-with-bazel/src/crypto/thread_none.cc \

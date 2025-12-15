@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -36,7 +37,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/optional.h"
 #include "src/core/lib/debug/trace.h"
 #include "src/core/lib/event_engine/posix_engine/event_poller.h"
 #include "src/core/lib/event_engine/posix_engine/internal_errqueue.h"
@@ -92,8 +92,7 @@
 
 #define MAX_READ_IOVEC 64
 
-namespace grpc_event_engine {
-namespace experimental {
+namespace grpc_event_engine::experimental {
 
 namespace {
 
@@ -278,8 +277,6 @@ void PosixEndpointImpl::FinishEstimate() {
 }
 
 absl::Status PosixEndpointImpl::TcpAnnotateError(absl::Status src_error) const {
-  grpc_core::StatusSetInt(&src_error, grpc_core::StatusIntProperty::kFd,
-                          handle_->WrappedFd());
   grpc_core::StatusSetInt(&src_error, grpc_core::StatusIntProperty::kRpcStatus,
                           GRPC_STATUS_UNAVAILABLE);
   return src_error;
@@ -472,7 +469,7 @@ void PosixEndpointImpl::MaybePostReclaimer() {
     memory_owner_.PostReclaimer(
         grpc_core::ReclamationPass::kBenign,
         [self = Ref(DEBUG_LOCATION, "Posix Reclaimer")](
-            absl::optional<grpc_core::ReclamationSweep> sweep) {
+            std::optional<grpc_core::ReclamationSweep> sweep) {
           if (sweep.has_value()) {
             self->PerformReclamation();
           }
@@ -596,7 +593,7 @@ void PosixEndpointImpl::HandleRead(absl::Status status) {
 
 bool PosixEndpointImpl::Read(absl::AnyInvocable<void(absl::Status)> on_read,
                              SliceBuffer* buffer,
-                             const EventEngine::Endpoint::ReadArgs* args) {
+                             EventEngine::Endpoint::ReadArgs args) {
   grpc_core::ReleasableMutexLock lock(&read_mu_);
   GRPC_TRACE_LOG(event_engine_endpoint, INFO)
       << "Endpoint[" << this << "]: Read";
@@ -604,8 +601,8 @@ bool PosixEndpointImpl::Read(absl::AnyInvocable<void(absl::Status)> on_read,
   incoming_buffer_ = buffer;
   incoming_buffer_->Clear();
   incoming_buffer_->Swap(last_read_buffer_);
-  if (args != nullptr && grpc_core::IsTcpFrameSizeTuningEnabled()) {
-    min_progress_size_ = std::max(static_cast<int>(args->read_hint_bytes), 1);
+  if (grpc_core::IsTcpFrameSizeTuningEnabled()) {
+    min_progress_size_ = std::max(static_cast<int>(args.read_hint_bytes()), 1);
   } else {
     min_progress_size_ = 1;
   }
@@ -1163,7 +1160,7 @@ void PosixEndpointImpl::HandleWrite(absl::Status status) {
 
 bool PosixEndpointImpl::Write(
     absl::AnyInvocable<void(absl::Status)> on_writable, SliceBuffer* data,
-    const EventEngine::Endpoint::WriteArgs* args) {
+    EventEngine::Endpoint::WriteArgs args) {
   absl::Status status = absl::OkStatus();
   TcpZerocopySendRecord* zerocopy_send_record = nullptr;
 
@@ -1197,9 +1194,8 @@ bool PosixEndpointImpl::Write(
     outgoing_buffer_ = data;
     outgoing_byte_idx_ = 0;
   }
-  if (args != nullptr) {
-    outgoing_buffer_arg_ = args->google_specific;
-  }
+  outgoing_buffer_arg_ =
+      args.GetDeprecatedAndDiscouragedGoogleSpecificPointer();
   if (outgoing_buffer_arg_) {
     CHECK(poller_->CanTrackErrors());
   }
@@ -1361,13 +1357,11 @@ std::unique_ptr<PosixEndpoint> CreatePosixEndpoint(
                                          std::move(allocator), options);
 }
 
-}  // namespace experimental
-}  // namespace grpc_event_engine
+}  // namespace grpc_event_engine::experimental
 
 #else  // GRPC_POSIX_SOCKET_TCP
 
-namespace grpc_event_engine {
-namespace experimental {
+namespace grpc_event_engine::experimental {
 
 std::unique_ptr<PosixEndpoint> CreatePosixEndpoint(
     EventHandle* /*handle*/, PosixEngineClosure* /*on_shutdown*/,
@@ -1376,7 +1370,6 @@ std::unique_ptr<PosixEndpoint> CreatePosixEndpoint(
   grpc_core::Crash("Cannot create PosixEndpoint on this platform");
 }
 
-}  // namespace experimental
-}  // namespace grpc_event_engine
+}  // namespace grpc_event_engine::experimental
 
 #endif  // GRPC_POSIX_SOCKET_TCP

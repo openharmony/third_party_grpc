@@ -28,11 +28,11 @@ namespace {
 // We then convert this struct to channel args, and feed it into the config to
 // keep things as they would be in production code.
 struct FuzzerChannelArgs {
-  absl::optional<int> alignment;
-  absl::optional<int> max_recv_chunk_size;
-  absl::optional<int> max_send_chunk_size;
-  absl::optional<int> inlined_payload_size_threshold;
-  absl::optional<bool> tracing_enabled;
+  std::optional<int> alignment;
+  std::optional<int> max_recv_chunk_size;
+  std::optional<int> max_send_chunk_size;
+  std::optional<int> inlined_payload_size_threshold;
+  std::optional<bool> tracing_enabled;
 
   ChannelArgs MakeChannelArgs() {
     ChannelArgs out;
@@ -83,10 +83,10 @@ void ConfigTest(FuzzerChannelArgs client_args_input,
                                                        fake_factory));
   VLOG(2) << "client_config': " << client_config;
   // Generate results
-  const chaotic_good::ChaoticGoodTransport::Options client_options =
-      client_config.MakeTransportOptions();
-  const chaotic_good::ChaoticGoodTransport::Options server_options =
-      server_config.MakeTransportOptions();
+  const chaotic_good::TcpFrameTransport::Options client_options =
+      client_config.MakeTcpFrameTransportOptions();
+  const chaotic_good::TcpFrameTransport::Options server_options =
+      server_config.MakeTcpFrameTransportOptions();
   const chaotic_good::MessageChunker client_chunker =
       client_config.MakeMessageChunker();
   const chaotic_good::MessageChunker server_chunker =

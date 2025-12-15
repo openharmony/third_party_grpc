@@ -16,7 +16,6 @@
 //
 //
 
-#include <gmock/gmock.h>
 #include <grpc/grpc.h>
 #include <grpc/grpc_security.h>
 #include <grpc/support/port_platform.h>
@@ -29,15 +28,17 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
-#include <gtest/gtest.h>
 
 #include "absl/log/check.h"
 #include "absl/memory/memory.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+#include "src/core/credentials/transport/tls/grpc_tls_certificate_provider.h"
+#include "src/core/credentials/transport/tls/ssl_utils.h"
 #include "src/core/lib/event_engine/default_event_engine.h"
-#include "src/core/lib/security/credentials/tls/grpc_tls_certificate_provider.h"
-#include "src/core/lib/security/security_connector/ssl_utils.h"
 #include "src/core/lib/slice/slice_internal.h"
 #include "src/core/util/env.h"
+#include "src/core/util/wait_for_single_owner.h"
 #include "src/cpp/client/secure_credentials.h"
 #include "src/proto/grpc/channelz/channelz.grpc.pb.h"
 #include "src/proto/grpc/testing/echo.grpc.pb.h"
@@ -218,7 +219,7 @@ class ChannelzServerTest : public ::testing::TestWithParam<CredentialsType> {
     // Ensure all pending callbacks are handled before finishing the test
     // to ensure hygiene between test cases.
     // (requires any grpc-object-holding values be cleared out first).
-    grpc_event_engine::experimental::WaitForSingleOwner(
+    grpc_core::WaitForSingleOwner(
         grpc_event_engine::experimental::GetDefaultEventEngine());
   }
 
@@ -443,75 +444,6 @@ TEST_P(ChannelzServerTest, ManyChannels) {
   Status s = channelz_stub_->GetTopChannels(&context, request, &response);
   EXPECT_TRUE(s.ok()) << "s.error_message() = " << s.error_message();
   EXPECT_EQ(response.channel_size(), kNumChannels);
-}
-
-TEST_P(ChannelzServerTest, ManyRequestsManyChannels) {
-  ResetStubs();
-  const int kNumChannels = 4;
-  ConfigureProxy(kNumChannels);
-  const int kNumSuccess = 10;
-  const int kNumFailed = 11;
-  for (int i = 0; i < kNumSuccess; ++i) {
-    SendSuccessfulEcho(0);
-    SendSuccessfulEcho(2);
-  }
-  for (int i = 0; i < kNumFailed; ++i) {
-    SendFailedEcho(1);
-    SendFailedEcho(2);
-  }
-
-  // the first channel saw only successes
-  {
-    GetChannelRequest request;
-    GetChannelResponse response;
-    request.set_channel_id(GetChannelId(0));
-    ClientContext context;
-    Status s = channelz_stub_->GetChannel(&context, request, &response);
-    EXPECT_TRUE(s.ok()) << "s.error_message() = " << s.error_message();
-    EXPECT_EQ(response.channel().data().calls_started(), kNumSuccess);
-    EXPECT_EQ(response.channel().data().calls_succeeded(), kNumSuccess);
-    EXPECT_EQ(response.channel().data().calls_failed(), 0);
-  }
-
-  // the second channel saw only failures
-  {
-    GetChannelRequest request;
-    GetChannelResponse response;
-    request.set_channel_id(GetChannelId(1));
-    ClientContext context;
-    Status s = channelz_stub_->GetChannel(&context, request, &response);
-    EXPECT_TRUE(s.ok()) << "s.error_message() = " << s.error_message();
-    EXPECT_EQ(response.channel().data().calls_started(), kNumFailed);
-    EXPECT_EQ(response.channel().data().calls_succeeded(), 0);
-    EXPECT_EQ(response.channel().data().calls_failed(), kNumFailed);
-  }
-
-  // the third channel saw both
-  {
-    GetChannelRequest request;
-    GetChannelResponse response;
-    request.set_channel_id(GetChannelId(2));
-    ClientContext context;
-    Status s = channelz_stub_->GetChannel(&context, request, &response);
-    EXPECT_TRUE(s.ok()) << "s.error_message() = " << s.error_message();
-    EXPECT_EQ(response.channel().data().calls_started(),
-              kNumSuccess + kNumFailed);
-    EXPECT_EQ(response.channel().data().calls_succeeded(), kNumSuccess);
-    EXPECT_EQ(response.channel().data().calls_failed(), kNumFailed);
-  }
-
-  // the fourth channel saw nothing
-  {
-    GetChannelRequest request;
-    GetChannelResponse response;
-    request.set_channel_id(GetChannelId(3));
-    ClientContext context;
-    Status s = channelz_stub_->GetChannel(&context, request, &response);
-    EXPECT_TRUE(s.ok()) << "s.error_message() = " << s.error_message();
-    EXPECT_EQ(response.channel().data().calls_started(), 0);
-    EXPECT_EQ(response.channel().data().calls_succeeded(), 0);
-    EXPECT_EQ(response.channel().data().calls_failed(), 0);
-  }
 }
 
 TEST_P(ChannelzServerTest, ManySubchannels) {

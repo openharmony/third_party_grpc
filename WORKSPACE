@@ -10,6 +10,8 @@ load("//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 
 grpc_extra_deps()
 
+# RBE
+
 load("@bazel_toolchains//rules/exec_properties:exec_properties.bzl", "create_rbe_exec_properties_dict", "custom_exec_properties")
 
 custom_exec_properties(
@@ -44,7 +46,7 @@ load("@rules_python//python:pip.bzl", "pip_parse")
 
 pip_parse(
     name = "grpc_python_dependencies",
-    requirements_lock = "@com_github_grpc_grpc//:requirements.bazel.txt",
+    requirements_lock = "@com_github_grpc_grpc//:requirements.bazel.lock",
 )
 
 load("@grpc_python_dependencies//:requirements.bzl", "install_deps")
@@ -113,22 +115,3 @@ bind(
     name = "madler_zlib",
     actual = "@zlib//:zlib",
 )
-
-# TODO: Enable below once https://github.com/bazel-xcode/PodToBUILD/issues/232 is resolved
-#
-#http_archive(
-#    name = "rules_pods",
-#    urls = ["https://github.com/pinterest/PodToBUILD/releases/download/4.1.0-412495/PodToBUILD.zip"],
-#)
-#
-#load(
-#    "@rules_pods//BazelExtensions:workspace.bzl",
-#    "new_pod_repository",
-#)
-#
-#new_pod_repository(
-#    name = "CronetFramework",
-#    is_dynamic_framework = True,
-#    podspec_url = "https://raw.githubusercontent.com/CocoaPods/Specs/master/Specs/2/e/1/CronetFramework/0.0.5/CronetFramework.podspec.json",
-#    url = "https://storage.googleapis.com/grpc-precompiled-binaries/cronet/Cronet.framework-v0.0.5.zip",
-#)

@@ -13,9 +13,7 @@
 // limitations under the License.
 //
 
-#include <gmock/gmock.h>
 #include <grpc/event_engine/endpoint_config.h>
-#include <gtest/gtest.h>
 
 #include <vector>
 
@@ -24,6 +22,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "envoy/extensions/clusters/aggregate/v3/cluster.pb.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "src/core/client_channel/backup_poller.h"
 #include "src/core/config/config_vars.h"
 #include "src/core/lib/address_utils/sockaddr_utils.h"
@@ -51,7 +51,7 @@ class ClusterTypeTest : public XdsEnd2endTest {
 
   // Subclasses must call this to initialize.
   void LogicalDnsInitClient(
-      absl::optional<XdsBootstrapBuilder> builder = absl::nullopt,
+      std::optional<XdsBootstrapBuilder> builder = std::nullopt,
       std::shared_ptr<ChannelCredentials> credentials = nullptr) {
     ChannelArguments args;
     args.SetPointerWithVtable(
@@ -166,15 +166,13 @@ TEST_P(LogicalDNSClusterTest, FailedBackendConnectionCausesReresolution) {
     if (!result.status.ok()) {
       EXPECT_EQ(StatusCode::UNAVAILABLE, result.status.error_code());
       EXPECT_THAT(result.status.error_message(),
-                  MakeConnectionFailureRegex(
-                      "connections to all backends failing; last error: "));
+                  ::testing::MatchesRegex(MakeConnectionFailureRegex(
+                      "connections to all backends failing; last error: ")));
     }
   });
 }
 
 TEST_P(LogicalDNSClusterTest, AutoHostRewrite) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kDnsName[] = "dns.example.com";
   // Set auto_host_rewrite in the RouteConfig.
   RouteConfiguration new_route_config = default_route_config_;
@@ -219,51 +217,7 @@ TEST_P(LogicalDNSClusterTest, AutoHostRewrite) {
   EXPECT_EQ(response.param().host(), absl::StrCat(kDnsName, ":443"));
 }
 
-TEST_P(LogicalDNSClusterTest, NoAuthorityRewriteWithoutEnvVar) {
-  constexpr char kDnsName[] = "dns.example.com";
-  // Set auto_host_rewrite in the RouteConfig.
-  RouteConfiguration new_route_config = default_route_config_;
-  new_route_config.mutable_virtual_hosts(0)
-      ->mutable_routes(0)
-      ->mutable_route()
-      ->mutable_auto_host_rewrite()
-      ->set_value(true);
-  SetRouteConfiguration(balancer_.get(), new_route_config);
-  // Create Logical DNS Cluster
-  auto cluster = default_cluster_;
-  cluster.set_type(Cluster::LOGICAL_DNS);
-  auto* address = cluster.mutable_load_assignment()
-                      ->add_endpoints()
-                      ->add_lb_endpoints()
-                      ->mutable_endpoint()
-                      ->mutable_address()
-                      ->mutable_socket_address();
-  address->set_address(kDnsName);
-  address->set_port_value(443);
-  balancer_->ads_service()->SetCdsResource(cluster);
-  // Create client and server.
-  LogicalDnsInitClient(MakeBootstrapBuilder().SetTrustedXdsServer());
-  CreateAndStartBackends(1);
-  // Set Logical DNS result
-  {
-    grpc_core::ExecCtx exec_ctx;
-    grpc_core::Resolver::Result result;
-    result.addresses = CreateAddressListFromPortList(GetBackendPorts());
-    logical_dns_cluster_resolver_response_generator_->SetResponseSynchronously(
-        std::move(result));
-  }
-  // Send RPC and verify the authority seen by the server.
-  EchoResponse response;
-  Status status = SendRpc(
-      RpcOptions().set_echo_host_from_authority_header(true), &response);
-  EXPECT_TRUE(status.ok()) << "code=" << status.error_code()
-                           << " message=" << status.error_message();
-  EXPECT_EQ(response.param().host(), kServerName);
-}
-
 TEST_P(LogicalDNSClusterTest, NoAuthorityRewriteIfServerNotTrustedInBootstrap) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kDnsName[] = "dns.example.com";
   // Set auto_host_rewrite in the RouteConfig.
   RouteConfiguration new_route_config = default_route_config_;
@@ -306,8 +260,6 @@ TEST_P(LogicalDNSClusterTest, NoAuthorityRewriteIfServerNotTrustedInBootstrap) {
 }
 
 TEST_P(LogicalDNSClusterTest, NoAuthorityRewriteIfNotEnabledInRoute) {
-  grpc_core::testing::ScopedExperimentalEnvVar env(
-      "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE");
   constexpr char kDnsName[] = "dns.example.com";
   // Create Logical DNS Cluster
   auto cluster = default_cluster_;
@@ -798,8 +750,8 @@ TEST_P(AggregateClusterTest, ReconfigEdsWhileLogicalDnsChildFails) {
   }
   // When an RPC fails, we know the channel has seen the update.
   constexpr char kErrorMessage[] =
-      "empty address list \\(DNS resolution failed for server.example.com:443: "
-      "UNAVAILABLE: injected error\\)";
+      "no children in weighted_target policy \\(DNS resolution failed for "
+      "server.example.com:443: UNAVAILABLE: injected error\\)";
   CheckRpcSendFailure(DEBUG_LOCATION, StatusCode::UNAVAILABLE, kErrorMessage);
   // Send an EDS update that moves locality1 to priority 0.
   args1 = EdsResourceArgs({

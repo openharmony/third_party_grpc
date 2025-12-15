@@ -111,6 +111,10 @@ class ConnectedSubchannelTest : public YodelTest {
       test_->handlers_.push(std::move(call_handler));
     }
 
+    RefCountedPtr<channelz::SocketNode> GetSocketNode() const override {
+      return nullptr;
+    }
+
    private:
     ConnectedSubchannelTest* const test_;
     ConnectivityStateTracker state_tracker_{"test-transport"};
@@ -144,8 +148,8 @@ class ConnectedSubchannelTest : public YodelTest {
 
   void Shutdown() override {}
 
-  absl::optional<CallHandler> PopHandler() {
-    if (handlers_.empty()) return absl::nullopt;
+  std::optional<CallHandler> PopHandler() {
+    if (handlers_.empty()) return std::nullopt;
     auto handler = std::move(handlers_.front());
     handlers_.pop();
     return handler;

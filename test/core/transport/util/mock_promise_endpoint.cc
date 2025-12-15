@@ -18,6 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "src/core/util/notification.h"
 
 using EventEngineSlice = grpc_event_engine::experimental::Slice;
 using grpc_event_engine::experimental::EventEngine;
@@ -25,7 +26,7 @@ using grpc_event_engine::experimental::EventEngine;
 using testing::WithArgs;
 
 namespace grpc_core {
-namespace chaotic_good {
+namespace util {
 namespace testing {
 
 void MockPromiseEndpoint::ExpectRead(
@@ -54,6 +55,86 @@ void MockPromiseEndpoint::ExpectRead(
           }));
 }
 
+absl::AnyInvocable<void()> MockPromiseEndpoint::ExpectDelayedRead(
+    std::initializer_list<EventEngineSlice> slices_init,
+    EventEngine* schedule_on_event_engine) {
+  struct DelayedRead {
+    Notification ready;
+    absl::AnyInvocable<void(absl::Status)> on_read;
+  };
+  std::shared_ptr<DelayedRead> delayed_read = std::make_shared<DelayedRead>();
+  std::vector<EventEngineSlice> slices;
+  for (auto&& slice : slices_init) slices.emplace_back(slice.Copy());
+  EXPECT_CALL(*endpoint, Read)
+      .InSequence(read_sequence)
+      .WillOnce(WithArgs<0, 1>(
+          [slices = std::move(slices), delayed_read](
+              absl::AnyInvocable<void(absl::Status)> on_read,
+              grpc_event_engine::experimental::SliceBuffer* buffer) mutable {
+            for (auto& slice : slices) {
+              buffer->Append(std::move(slice));
+            }
+            delayed_read->on_read = std::move(on_read);
+            delayed_read->ready.Notify();
+            return false;
+          }));
+  return [delayed_read, schedule_on_event_engine]() {
+    schedule_on_event_engine->Run([delayed_read]() mutable {
+      delayed_read->ready.WaitForNotification();
+      delayed_read->on_read(absl::OkStatus());
+    });
+  };
+}
+
+void MockPromiseEndpoint::ExpectReadClose(
+    absl::Status status,
+    grpc_event_engine::experimental::EventEngine* schedule_on_event_engine) {
+  DCHECK_NE(status, absl::OkStatus());
+  DCHECK_NE(schedule_on_event_engine, nullptr);
+  EXPECT_CALL(*endpoint, Read)
+      .InSequence(read_sequence)
+      .WillOnce(WithArgs<0, 1>(
+          [status = std::move(status), schedule_on_event_engine](
+              absl::AnyInvocable<void(absl::Status)> on_read,
+              GRPC_UNUSED grpc_event_engine::experimental::SliceBuffer*
+                  buffer) {
+            schedule_on_event_engine->Run(
+                [on_read = std::move(on_read), status]() mutable {
+                  on_read(status);
+                });
+            return false;
+          }));
+}
+
+absl::AnyInvocable<void()> MockPromiseEndpoint::ExpectDelayedReadClose(
+    absl::Status status,
+    grpc_event_engine::experimental::EventEngine* schedule_on_event_engine) {
+  struct DelayedReadClose {
+    Notification ready;
+    absl::AnyInvocable<void(absl::Status)> on_read;
+  };
+  std::shared_ptr<DelayedReadClose> delayed_read_close =
+      std::make_shared<DelayedReadClose>();
+  DCHECK_NE(schedule_on_event_engine, nullptr);
+  EXPECT_CALL(*endpoint, Read)
+      .InSequence(read_sequence)
+      .WillOnce(WithArgs<0, 1>(
+          [delayed_read_close](
+              absl::AnyInvocable<void(absl::Status)> on_read,
+              GRPC_UNUSED grpc_event_engine::experimental::SliceBuffer*
+                  buffer) {
+            delayed_read_close->on_read = std::move(on_read);
+            delayed_read_close->ready.Notify();
+            return false;
+          }));
+  return [delayed_read_close, status, schedule_on_event_engine]() {
+    schedule_on_event_engine->Run([delayed_read_close, status]() mutable {
+      delayed_read_close->ready.WaitForNotification();
+      delayed_read_close->on_read(status);
+    });
+  };
+}
+
 void MockPromiseEndpoint::ExpectWrite(
     std::initializer_list<EventEngineSlice> slices,
     EventEngine* schedule_on_event_engine) {
@@ -72,6 +153,39 @@ void MockPromiseEndpoint::ExpectWrite(
             grpc_slice_buffer_swap(buffer->c_slice_buffer(),
                                    tmp.c_slice_buffer());
             EXPECT_EQ(tmp.JoinIntoString(), expect);
+            if (schedule_on_event_engine != nullptr) {
+              schedule_on_event_engine->Run(
+                  [on_writable = std::move(on_writable)]() mutable {
+                    on_writable(absl::OkStatus());
+                  });
+              return false;
+            } else {
+              return true;
+            }
+          }));
+}
+
+void MockPromiseEndpoint::ExpectWriteWithCallback(
+    std::initializer_list<EventEngineSlice> slices,
+    EventEngine* schedule_on_event_engine,
+    absl::AnyInvocable<void(SliceBuffer&, SliceBuffer&)> callback) {
+  SliceBuffer expect;
+  for (auto&& slice : slices) {
+    expect.Append(grpc_event_engine::experimental::internal::SliceCast<Slice>(
+        slice.Copy()));
+  }
+  EXPECT_CALL(*endpoint, Write)
+      .InSequence(write_sequence)
+      .WillOnce(WithArgs<0, 1>(
+          [expect = std::move(expect), schedule_on_event_engine,
+           callback = std::move(callback)](
+              absl::AnyInvocable<void(absl::Status)> on_writable,
+              grpc_event_engine::experimental::SliceBuffer* buffer) mutable {
+            SliceBuffer tmp;
+            grpc_slice_buffer_swap(buffer->c_slice_buffer(),
+                                   tmp.c_slice_buffer());
+            callback(tmp, expect);
+
             if (schedule_on_event_engine != nullptr) {
               schedule_on_event_engine->Run(
                   [on_writable = std::move(on_writable)]() mutable {
@@ -109,5 +223,5 @@ void MockPromiseEndpoint::CaptureWrites(SliceBuffer& writes,
 }
 
 }  // namespace testing
-}  // namespace chaotic_good
+}  // namespace util
 }  // namespace grpc_core

@@ -28,6 +28,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -38,13 +39,13 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "opencensus/stats/stats.h"
 #include "opencensus/tags/tag_key.h"
+#include "src/core/call/call_finalization.h"
+#include "src/core/call/metadata_batch.h"
 #include "src/core/config/core_configuration.h"
 #include "src/core/ext/filters/load_reporting/registered_opencensus_objects.h"
 #include "src/core/lib/address_utils/parse_address.h"
-#include "src/core/lib/channel/call_finalization.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/channel/channel_fwd.h"
 #include "src/core/lib/channel/channel_stack.h"
@@ -54,10 +55,9 @@
 #include "src/core/lib/promise/context.h"
 #include "src/core/lib/promise/promise.h"
 #include "src/core/lib/promise/seq.h"
-#include "src/core/lib/security/context/security_context.h"
 #include "src/core/lib/slice/slice.h"
 #include "src/core/lib/surface/channel_stack_type.h"
-#include "src/core/lib/transport/metadata_batch.h"
+#include "src/core/transport/auth_context.h"
 #include "src/core/util/latent_see.h"
 #include "src/core/util/uri.h"
 #include "src/cpp/server/load_reporter/constants.h"
@@ -69,11 +69,6 @@ namespace grpc_core {
 constexpr char kEncodedIpv4AddressLengthString[] = "08";
 constexpr char kEncodedIpv6AddressLengthString[] = "32";
 constexpr char kEmptyAddressLengthString[] = "00";
-
-const NoInterceptor ServerLoadReportingFilter::Call::OnServerInitialMetadata;
-const NoInterceptor ServerLoadReportingFilter::Call::OnClientToServerMessage;
-const NoInterceptor ServerLoadReportingFilter::Call::OnClientToServerHalfClose;
-const NoInterceptor ServerLoadReportingFilter::Call::OnServerToClientMessage;
 
 absl::StatusOr<std::unique_ptr<ServerLoadReportingFilter>>
 ServerLoadReportingFilter::Create(const ChannelArgs& channel_args,
@@ -256,19 +251,20 @@ const grpc_channel_filter ServerLoadReportingFilter::kFilter =
 // time if we build with the filter target.
 struct ServerLoadReportingFilterStaticRegistrar {
   ServerLoadReportingFilterStaticRegistrar() {
-    CoreConfiguration::RegisterBuilder([](CoreConfiguration::Builder* builder) {
-      // Access measures to ensure they are initialized. Otherwise, we can't
-      // create any valid view before the first RPC.
-      grpc::load_reporter::MeasureStartCount();
-      grpc::load_reporter::MeasureEndCount();
-      grpc::load_reporter::MeasureEndBytesSent();
-      grpc::load_reporter::MeasureEndBytesReceived();
-      grpc::load_reporter::MeasureEndLatencyMs();
-      grpc::load_reporter::MeasureOtherCallMetric();
-      builder->channel_init()
-          ->RegisterFilter<ServerLoadReportingFilter>(GRPC_SERVER_CHANNEL)
-          .IfChannelArg(GRPC_ARG_ENABLE_LOAD_REPORTING, false);
-    });
+    CoreConfiguration::RegisterEphemeralBuilder(
+        [](CoreConfiguration::Builder* builder) {
+          // Access measures to ensure they are initialized. Otherwise, we can't
+          // create any valid view before the first RPC.
+          grpc::load_reporter::MeasureStartCount();
+          grpc::load_reporter::MeasureEndCount();
+          grpc::load_reporter::MeasureEndBytesSent();
+          grpc::load_reporter::MeasureEndBytesReceived();
+          grpc::load_reporter::MeasureEndLatencyMs();
+          grpc::load_reporter::MeasureOtherCallMetric();
+          builder->channel_init()
+              ->RegisterFilter<ServerLoadReportingFilter>(GRPC_SERVER_CHANNEL)
+              .IfChannelArg(GRPC_ARG_ENABLE_LOAD_REPORTING, false);
+        });
   }
 } server_load_reporting_filter_static_registrar;
 

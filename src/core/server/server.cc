@@ -33,6 +33,7 @@
 #include <list>
 #include <memory>
 #include <new>
+#include <optional>
 #include <queue>
 #include <type_traits>
 #include <utility>
@@ -43,10 +44,12 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
+#include "src/core/call/interception_chain.h"
+#include "src/core/call/server_call.h"
 #include "src/core/channelz/channel_trace.h"
 #include "src/core/channelz/channelz.h"
 #include "src/core/config/core_configuration.h"
+#include "src/core/credentials/transport/transport_credentials.h"
 #include "src/core/lib/address_utils/sockaddr_utils.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/channel/channel_args_preconditioning.h"
@@ -63,7 +66,6 @@
 #include "src/core/lib/promise/seq.h"
 #include "src/core/lib/promise/try_join.h"
 #include "src/core/lib/promise/try_seq.h"
-#include "src/core/lib/security/credentials/credentials.h"
 #include "src/core/lib/slice/slice_buffer.h"
 #include "src/core/lib/slice/slice_internal.h"
 #include "src/core/lib/surface/call.h"
@@ -72,19 +74,20 @@
 #include "src/core/lib/surface/channel_stack_type.h"
 #include "src/core/lib/surface/completion_queue.h"
 #include "src/core/lib/surface/legacy_channel.h"
-#include "src/core/lib/surface/server_call.h"
 #include "src/core/lib/transport/connectivity_state.h"
 #include "src/core/lib/transport/error_utils.h"
-#include "src/core/lib/transport/interception_chain.h"
 #include "src/core/telemetry/stats.h"
 #include "src/core/util/crash.h"
 #include "src/core/util/debug_location.h"
 #include "src/core/util/mpscq.h"
 #include "src/core/util/orphanable.h"
+#include "src/core/util/shared_bit_gen.h"
 #include "src/core/util/status_helper.h"
 #include "src/core/util/useful.h"
 
 namespace grpc_core {
+
+using http2::Http2ErrorCode;
 
 //
 // Server::ListenerState::ConfigFetcherWatcher
@@ -138,41 +141,35 @@ Server::ListenerState::ListenerState(RefCountedPtr<Server> server,
 }
 
 void Server::ListenerState::Start() {
-  if (IsServerListenerEnabled()) {
-    if (server_->config_fetcher() != nullptr) {
-      auto watcher = std::make_unique<ConfigFetcherWatcher>(this);
-      config_fetcher_watcher_ = watcher.get();
-      server_->config_fetcher()->StartWatch(
-          grpc_sockaddr_to_string(listener_->resolved_address(), false).value(),
-          std::move(watcher));
-    } else {
-      {
-        MutexLock lock(&mu_);
-        started_ = true;
-        is_serving_ = true;
-      }
-      listener_->Start();
-    }
+  if (server_->config_fetcher() != nullptr) {
+    auto watcher = std::make_unique<ConfigFetcherWatcher>(this);
+    config_fetcher_watcher_ = watcher.get();
+    server_->config_fetcher()->StartWatch(
+        grpc_sockaddr_to_string(listener_->resolved_address(), false).value(),
+        std::move(watcher));
   } else {
+    {
+      MutexLock lock(&mu_);
+      started_ = true;
+      is_serving_ = true;
+    }
     listener_->Start();
   }
 }
 
 void Server::ListenerState::Stop() {
-  if (IsServerListenerEnabled()) {
-    absl::flat_hash_set<OrphanablePtr<ListenerInterface::LogicalConnection>>
-        connections;
-    {
-      MutexLock lock(&mu_);
-      // Orphan the connections so that they can start cleaning up.
-      connections = std::move(connections_);
-      connections_.clear();
-      is_serving_ = false;
-    }
-    if (config_fetcher_watcher_ != nullptr) {
-      CHECK_NE(server_->config_fetcher(), nullptr);
-      server_->config_fetcher()->CancelWatch(config_fetcher_watcher_);
-    }
+  absl::flat_hash_set<OrphanablePtr<ListenerInterface::LogicalConnection>>
+      connections;
+  {
+    MutexLock lock(&mu_);
+    // Orphan the connections so that they can start cleaning up.
+    connections = std::move(connections_);
+    connections_.clear();
+    is_serving_ = false;
+  }
+  if (config_fetcher_watcher_ != nullptr) {
+    CHECK_NE(server_->config_fetcher(), nullptr);
+    server_->config_fetcher()->CancelWatch(config_fetcher_watcher_);
   }
   GRPC_CLOSURE_INIT(&destroy_done_, ListenerDestroyDone, server_.get(),
                     grpc_schedule_on_exec_ctx);
@@ -180,7 +177,7 @@ void Server::ListenerState::Stop() {
   listener_.reset();
 }
 
-absl::optional<ChannelArgs> Server::ListenerState::AddLogicalConnection(
+std::optional<ChannelArgs> Server::ListenerState::AddLogicalConnection(
     OrphanablePtr<ListenerInterface::LogicalConnection> connection,
     const ChannelArgs& args, grpc_endpoint* endpoint) {
   RefCountedPtr<ServerConfigFetcher::ConnectionManager> connection_manager;
@@ -188,7 +185,7 @@ absl::optional<ChannelArgs> Server::ListenerState::AddLogicalConnection(
     MutexLock lock(&mu_);
     if (!is_serving_) {
       // Not serving
-      return absl::nullopt;
+      return std::nullopt;
     }
     connection_manager = connection_manager_;
   }
@@ -204,24 +201,24 @@ absl::optional<ChannelArgs> Server::ListenerState::AddLogicalConnection(
   if (server_->config_fetcher() != nullptr) {
     if (connection_manager == nullptr) {
       // Connection manager not available
-      return absl::nullopt;
+      return std::nullopt;
     }
     absl::StatusOr<ChannelArgs> args_result =
         connection_manager->UpdateChannelArgsForConnection(new_args, endpoint);
     if (!args_result.ok()) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     auto* server_credentials =
         (*args_result).GetObject<grpc_server_credentials>();
     if (server_credentials == nullptr) {
       // Could not find server credentials
-      return absl::nullopt;
+      return std::nullopt;
     }
     auto security_connector =
         server_credentials->create_security_connector(*args_result);
     if (security_connector == nullptr) {
       // Unable to create secure server with credentials
-      return absl::nullopt;
+      return std::nullopt;
     }
     new_args = (*args_result).SetObject(security_connector);
   }
@@ -232,7 +229,7 @@ absl::optional<ChannelArgs> Server::ListenerState::AddLogicalConnection(
   // to the list of tracked connections.
   if (!is_serving_ || connection_manager != connection_manager_) {
     // Not serving
-    return absl::nullopt;
+    return std::nullopt;
   }
   connections_.emplace(std::move(connection));
   return new_args;
@@ -328,7 +325,6 @@ void Server::ListenerState::MaybeStartNewGraceTimerLocked() {
   drain_grace_timer_handle_ = event_engine()->RunAfter(
       connections_to_be_drained_list_.front().timestamp - Timestamp::Now(),
       [self = Ref()]() mutable {
-        ApplicationCallbackExecCtx callback_exec_ctx;
         ExecCtx exec_ctx;
         self->OnDrainGraceTimer();
         // resetting within an active ExecCtx
@@ -731,7 +727,7 @@ class Server::RealRequestMatcher : public RequestMatcherInterface {
       }
       if (rc == nullptr) {
         if (server_->pending_backlog_protector_.Reject(pending_promises_.size(),
-                                                       server_->bitgen_)) {
+                                                       SharedBitGen())) {
           return Immediate(absl::ResourceExhaustedError(
               "Too many pending requests for this server"));
         }
@@ -992,7 +988,8 @@ class ChannelBroadcaster {
     op->goaway_error =
         send_goaway
             ? grpc_error_set_int(GRPC_ERROR_CREATE("Server shutdown"),
-                                 StatusIntProperty::kRpcStatus, GRPC_STATUS_OK)
+                                 StatusIntProperty::kHttp2Error,
+                                 static_cast<int>(Http2ErrorCode::kNoError))
             : absl::OkStatus();
     sc->slice = grpc_slice_from_copied_string("Server shutdown");
     op->disconnect_with_error = send_disconnect;
@@ -1066,6 +1063,7 @@ RefCountedPtr<channelz::ServerNode> CreateChannelzNode(
     channelz_node->AddTraceEvent(
         channelz::ChannelTrace::Severity::Info,
         grpc_slice_from_static_string("Server created"));
+    channelz_node->SetChannelArgs(args);
   }
   return channelz_node;
 }
@@ -1085,71 +1083,71 @@ absl::StatusOr<ClientMetadataHandle> CheckClientMetadata(
 }
 }  // namespace
 
+auto Server::MatchRequestAndMaybeReadFirstMessage(CallHandler call_handler,
+                                                  ClientMetadataHandle md) {
+  auto* registered_method = static_cast<RegisteredMethod*>(
+      md->get(GrpcRegisteredMethod()).value_or(nullptr));
+  RequestMatcherInterface* rm;
+  grpc_server_register_method_payload_handling payload_handling =
+      GRPC_SRM_PAYLOAD_NONE;
+  if (registered_method == nullptr) {
+    rm = unregistered_request_matcher_.get();
+  } else {
+    payload_handling = registered_method->payload_handling;
+    rm = registered_method->matcher.get();
+  }
+  using FirstMessageResult = ValueOrFailure<std::optional<MessageHandle>>;
+  auto maybe_read_first_message = If(
+      payload_handling == GRPC_SRM_PAYLOAD_READ_INITIAL_BYTE_BUFFER,
+      [call_handler]() mutable {
+        return Map(
+            call_handler.PullMessage(),
+            [](ClientToServerNextMessage next_msg) -> FirstMessageResult {
+              if (!next_msg.ok()) return Failure{};
+              if (!next_msg.has_value()) {
+                return FirstMessageResult(std::nullopt);
+              }
+              return FirstMessageResult(next_msg.TakeValue());
+            });
+      },
+      []() -> FirstMessageResult { return FirstMessageResult(std::nullopt); });
+  return TryJoin<absl::StatusOr>(
+      std::move(maybe_read_first_message), rm->MatchRequest(0),
+      [md = std::move(md)]() mutable {
+        return ValueOrFailure<ClientMetadataHandle>(std::move(md));
+      });
+}
+
 auto Server::MatchAndPublishCall(CallHandler call_handler) {
-  call_handler.SpawnGuardedUntilCallCompletes(
-      "request_matcher", [this, call_handler]() mutable {
-        return TrySeq(
+  call_handler.SpawnGuarded("request_matcher", [this, call_handler]() mutable {
+    return TrySeq(
+        call_handler.UntilCallCompletes(TrySeq(
             // Wait for initial metadata to pass through all filters
             Map(call_handler.PullClientInitialMetadata(), CheckClientMetadata),
             // Match request with requested call
             [this, call_handler](ClientMetadataHandle md) mutable {
-              auto* registered_method = static_cast<RegisteredMethod*>(
-                  md->get(GrpcRegisteredMethod()).value_or(nullptr));
-              RequestMatcherInterface* rm;
-              grpc_server_register_method_payload_handling payload_handling =
-                  GRPC_SRM_PAYLOAD_NONE;
-              if (registered_method == nullptr) {
-                rm = unregistered_request_matcher_.get();
-              } else {
-                payload_handling = registered_method->payload_handling;
-                rm = registered_method->matcher.get();
-              }
-              using FirstMessageResult =
-                  ValueOrFailure<absl::optional<MessageHandle>>;
-              auto maybe_read_first_message = If(
-                  payload_handling == GRPC_SRM_PAYLOAD_READ_INITIAL_BYTE_BUFFER,
-                  [call_handler]() mutable {
-                    return Map(
-                        call_handler.PullMessage(),
-                        [](ClientToServerNextMessage next_msg)
-                            -> FirstMessageResult {
-                          if (!next_msg.ok()) return Failure{};
-                          if (!next_msg.has_value()) {
-                            return FirstMessageResult(absl::nullopt);
-                          }
-                          return FirstMessageResult(next_msg.TakeValue());
-                        });
-                  },
-                  []() -> FirstMessageResult {
-                    return FirstMessageResult(absl::nullopt);
-                  });
-              return TryJoin<absl::StatusOr>(
-                  std::move(maybe_read_first_message), rm->MatchRequest(0),
-                  [md = std::move(md)]() mutable {
-                    return ValueOrFailure<ClientMetadataHandle>(std::move(md));
-                  });
-            },
-            // Publish call to cq
-            [call_handler,
-             this](std::tuple<absl::optional<MessageHandle>,
-                              RequestMatcherInterface::MatchResult,
-                              ClientMetadataHandle>
-                       r) {
-              RequestMatcherInterface::MatchResult& mr = std::get<1>(r);
-              auto md = std::move(std::get<2>(r));
-              auto* rc = mr.TakeCall();
-              rc->Complete(std::move(std::get<0>(r)), *md);
-              grpc_call* call =
-                  MakeServerCall(call_handler, std::move(md), this,
-                                 rc->cq_bound_to_call, rc->initial_metadata);
-              *rc->call = call;
-              return Map(
-                  WaitForCqEndOp(false, rc->tag, absl::OkStatus(), mr.cq()),
-                  [rc = std::unique_ptr<RequestedCall>(rc)](Empty) {
-                    return absl::OkStatus();
-                  });
-            });
-      });
+              return MatchRequestAndMaybeReadFirstMessage(
+                  std::move(call_handler), std::move(md));
+            })),
+        // Publish call to cq
+        [call_handler, this](std::tuple<std::optional<MessageHandle>,
+                                        RequestMatcherInterface::MatchResult,
+                                        ClientMetadataHandle>
+                                 r) {
+          RequestMatcherInterface::MatchResult& mr = std::get<1>(r);
+          auto md = std::move(std::get<2>(r));
+          auto* rc = mr.TakeCall();
+          rc->Complete(std::move(std::get<0>(r)), *md);
+          grpc_call* call =
+              MakeServerCall(call_handler, std::move(md), this,
+                             rc->cq_bound_to_call, rc->initial_metadata);
+          *rc->call = call;
+          return Map(WaitForCqEndOp(false, rc->tag, absl::OkStatus(), mr.cq()),
+                     [rc = std::unique_ptr<RequestedCall>(rc)](Empty) {
+                       return absl::OkStatus();
+                     });
+        });
+  });
 }
 
 absl::StatusOr<RefCountedPtr<UnstartedCallDestination>>
@@ -1195,8 +1193,7 @@ void Server::AddListener(OrphanablePtr<ListenerInterface> listener) {
   channelz::ListenSocketNode* listen_socket_node =
       listener->channelz_listen_socket_node();
   if (listen_socket_node != nullptr && channelz_node_ != nullptr) {
-    channelz_node_->AddChildListenSocket(
-        listen_socket_node->RefAsSubclass<channelz::ListenSocketNode>());
+    listen_socket_node->AddParent(channelz_node_.get());
   }
   ListenerInterface* ptr = listener.get();
   listener_states_.emplace_back(
@@ -1241,10 +1238,9 @@ void Server::Start() {
   starting_cv_.Signal();
 }
 
-grpc_error_handle Server::SetupTransport(
-    Transport* transport, grpc_pollset* accepting_pollset,
-    const ChannelArgs& args,
-    const RefCountedPtr<channelz::SocketNode>& socket_node) {
+grpc_error_handle Server::SetupTransport(Transport* transport,
+                                         grpc_pollset* accepting_pollset,
+                                         const ChannelArgs& args) {
   GRPC_LATENT_SEE_INNER_SCOPE("Server::SetupTransport");
   // Create channel.
   global_stats().IncrementServerChannelsCreated();
@@ -1254,11 +1250,12 @@ grpc_error_handle Server::SetupTransport(
     // TODO(ctiller): post-v3-transition make this method take an
     // OrphanablePtr<ServerTransport> directly.
     OrphanablePtr<ServerTransport> t(transport->server_transport());
-    auto destination = MakeCallDestination(args.SetObject(transport));
+    auto destination = MakeCallDestination(
+        args.SetObject(transport).SetObject<channelz::BaseNode>(
+            transport->GetSocketNode()));
     if (!destination.ok()) {
       return absl_status_to_grpc_error(destination.status());
     }
-    // TODO(ctiller): add channelz node
     t->SetCallDestination(std::move(*destination));
     MutexLock lock(&mu_global_);
     if (ShutdownCalled()) {
@@ -1266,13 +1263,19 @@ grpc_error_handle Server::SetupTransport(
     }
     t->StartConnectivityWatch(MakeOrphanable<TransportConnectivityWatcher>(
         t->RefAsSubclass<ServerTransport>(), Ref()));
+    if (auto socket_node = transport->GetSocketNode(); socket_node != nullptr) {
+      socket_node->AddParent(channelz_node_.get());
+    }
     GRPC_TRACE_LOG(server_channel, INFO) << "Adding connection";
     connections_.emplace(std::move(t));
     ++connections_open_;
   } else {
     CHECK(transport->filter_stack_transport() != nullptr);
     absl::StatusOr<RefCountedPtr<Channel>> channel = LegacyChannel::Create(
-        "", args.SetObject(transport), GRPC_SERVER_CHANNEL);
+        "",
+        args.SetObject(transport).SetObject<channelz::BaseNode>(
+            transport->GetSocketNode()),
+        GRPC_SERVER_CHANNEL);
     if (!channel.ok()) {
       return absl_status_to_grpc_error(channel.status());
     }
@@ -1291,9 +1294,9 @@ grpc_error_handle Server::SetupTransport(
       cq_idx = static_cast<size_t>(rand()) % std::max<size_t>(1, cqs_.size());
     }
     intptr_t channelz_socket_uuid = 0;
-    if (socket_node != nullptr) {
+    if (auto socket_node = transport->GetSocketNode(); socket_node != nullptr) {
       channelz_socket_uuid = socket_node->uuid();
-      channelz_node_->AddChildSocket(socket_node);
+      socket_node->AddParent(channelz_node_.get());
     }
     // Initialize chand.
     chand->InitTransport(Ref(), std::move(*channel), cq_idx, transport,
@@ -1343,7 +1346,7 @@ Server::RegisteredMethod* Server::RegisterMethod(
     LOG(ERROR) << "grpc_server_register_method method string cannot be NULL";
     return nullptr;
   }
-  auto key = std::make_pair(host ? host : "", method);
+  auto key = std::pair(host ? host : "", method);
   if (registered_methods_.find(key) != registered_methods_.end()) {
     LOG(ERROR) << "duplicate registration for " << method << "@"
                << (host ? host : "*");
@@ -1494,8 +1497,7 @@ void Server::StopListening() {
     channelz::ListenSocketNode* channelz_listen_socket_node =
         listener_state->listener()->channelz_listen_socket_node();
     if (channelz_node_ != nullptr && channelz_listen_socket_node != nullptr) {
-      channelz_node_->RemoveChildListenSocket(
-          channelz_listen_socket_node->uuid());
+      channelz_listen_socket_node->RemoveParent(channelz_node_.get());
     }
     listener_state->Stop();
   }
@@ -1647,17 +1649,12 @@ class Server::ChannelData::ConnectivityWatcher
 
 Server::ChannelData::~ChannelData() {
   if (server_ != nullptr) {
-    if (server_->channelz_node_ != nullptr && channelz_socket_uuid_ != 0) {
-      server_->channelz_node_->RemoveChildSocket(channelz_socket_uuid_);
+    MutexLock lock(&server_->mu_global_);
+    if (list_position_.has_value()) {
+      server_->channels_.erase(*list_position_);
+      list_position_.reset();
     }
-    {
-      MutexLock lock(&server_->mu_global_);
-      if (list_position_.has_value()) {
-        server_->channels_.erase(*list_position_);
-        list_position_.reset();
-      }
-      server_->MaybeFinishShutdown();
-    }
+    server_->MaybeFinishShutdown();
   }
 }
 
@@ -1697,12 +1694,12 @@ Server::RegisteredMethod* Server::GetRegisteredMethod(
     const absl::string_view& host, const absl::string_view& path) {
   if (registered_methods_.empty()) return nullptr;
   // check for an exact match with host
-  auto it = registered_methods_.find(std::make_pair(host, path));
+  auto it = registered_methods_.find(std::pair(host, path));
   if (it != registered_methods_.end()) {
     return it->second.get();
   }
   // check for wildcard method definition (no host set)
-  it = registered_methods_.find(std::make_pair("", path));
+  it = registered_methods_.find(std::pair("", path));
   if (it != registered_methods_.end()) {
     return it->second.get();
   }
@@ -2111,7 +2108,6 @@ void grpc_server_start(grpc_server* server) {
 
 void grpc_server_shutdown_and_notify(grpc_server* server,
                                      grpc_completion_queue* cq, void* tag) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO)
       << "grpc_server_shutdown_and_notify(server=" << server << ", cq=" << cq
@@ -2120,7 +2116,6 @@ void grpc_server_shutdown_and_notify(grpc_server* server,
 }
 
 void grpc_server_cancel_all_calls(grpc_server* server) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO)
       << "grpc_server_cancel_all_calls(server=" << server << ")";
@@ -2128,7 +2123,6 @@ void grpc_server_cancel_all_calls(grpc_server* server) {
 }
 
 void grpc_server_destroy(grpc_server* server) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO) << "grpc_server_destroy(server=" << server << ")";
   grpc_core::Server::FromC(server)->Orphan();
@@ -2139,7 +2133,6 @@ grpc_call_error grpc_server_request_call(
     grpc_metadata_array* request_metadata,
     grpc_completion_queue* cq_bound_to_call,
     grpc_completion_queue* cq_for_notification, void* tag) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO)
       << "grpc_server_request_call(" << "server=" << server << ", call=" << call
@@ -2157,7 +2150,6 @@ grpc_call_error grpc_server_request_registered_call(
     grpc_byte_buffer** optional_payload,
     grpc_completion_queue* cq_bound_to_call,
     grpc_completion_queue* cq_for_notification, void* tag_new) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   auto* rm =
       static_cast<grpc_core::Server::RegisteredMethod*>(registered_method);
@@ -2176,7 +2168,6 @@ grpc_call_error grpc_server_request_registered_call(
 
 void grpc_server_set_config_fetcher(
     grpc_server* server, grpc_server_config_fetcher* server_config_fetcher) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO)
       << "grpc_server_set_config_fetcher(server=" << server
@@ -2188,7 +2179,6 @@ void grpc_server_set_config_fetcher(
 
 void grpc_server_config_fetcher_destroy(
     grpc_server_config_fetcher* server_config_fetcher) {
-  grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
   grpc_core::ExecCtx exec_ctx;
   GRPC_TRACE_LOG(api, INFO)
       << "grpc_server_config_fetcher_destroy(config_fetcher="

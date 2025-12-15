@@ -19,6 +19,7 @@
 #ifndef GRPC_SRC_CORE_EXT_TRANSPORT_CHTTP2_SERVER_CHTTP2_SERVER_H
 #define GRPC_SRC_CORE_EXT_TRANSPORT_CHTTP2_SERVER_CHTTP2_SERVER_H
 
+#include <grpc/byte_buffer.h>
 #include <grpc/event_engine/event_engine.h>
 #include <grpc/passive_listener.h>
 #include <grpc/support/port_platform.h>
@@ -35,7 +36,10 @@ namespace grpc_core {
 
 struct AcceptorDeleter {
   void operator()(grpc_tcp_server_acceptor* acceptor) const {
-    gpr_free(acceptor);
+    if (acceptor != nullptr) {
+      grpc_byte_buffer_destroy(acceptor->pending_data);
+      gpr_free(acceptor);
+    }
   }
 };
 
@@ -47,7 +51,7 @@ class ActiveConnectionTestPeer;
 class HandshakingStateTestPeer;
 }  // namespace testing
 
-// New ChttpServerListener used if experiment "server_listener" is enabled
+// New ChttpServerListener
 class NewChttp2ServerListener : public Server::ListenerInterface {
  public:
   using AcceptorPtr =
@@ -92,7 +96,7 @@ class NewChttp2ServerListener : public Server::ListenerInterface {
       // Following fields are protected by WorkSerializer.
       RefCountedPtr<HandshakeManager> handshake_mgr_;
       // State for enforcing handshake timeout on receiving HTTP/2 settings.
-      absl::optional<grpc_event_engine::experimental::EventEngine::TaskHandle>
+      std::optional<grpc_event_engine::experimental::EventEngine::TaskHandle>
           timer_handle_;
       grpc_closure on_receive_settings_;
     };
@@ -127,8 +131,8 @@ class NewChttp2ServerListener : public Server::ListenerInterface {
     // Following fields are protected by WorkSerializer.
     // Set by HandshakingState before the handshaking begins and set to a valid
     // transport when handshaking is done successfully.
-    absl::variant<OrphanablePtr<HandshakingState>,
-                  RefCountedPtr<grpc_chttp2_transport>>
+    std::variant<OrphanablePtr<HandshakingState>,
+                 RefCountedPtr<grpc_chttp2_transport>>
         state_;
     grpc_closure on_close_;
     bool shutdown_ = false;
@@ -212,7 +216,7 @@ class NewChttp2ServerListener : public Server::ListenerInterface {
   grpc_closure tcp_server_shutdown_complete_ ABSL_GUARDED_BY(mu_);
   grpc_closure* on_destroy_done_ ABSL_GUARDED_BY(mu_) = nullptr;
   RefCountedPtr<channelz::ListenSocketNode> channelz_listen_socket_;
-  // TODO(yashykt): consider using absl::variant<> to minimize memory usage for
+  // TODO(yashykt): consider using std::variant<> to minimize memory usage for
   // disjoint cases where different fields are used.
   std::shared_ptr<experimental::PassiveListenerImpl> passive_listener_;
 };
@@ -247,10 +251,14 @@ class PassiveListenerImpl final : public PassiveListener {
   Mutex mu_;
   // Data members will be populated when initialized.
   RefCountedPtr<Server> server_;
-  absl::variant<Chttp2ServerListener*, NewChttp2ServerListener*> listener_;
+  std::variant<Chttp2ServerListener*, NewChttp2ServerListener*> listener_;
 };
 
 }  // namespace experimental
+
+absl::StatusOr<int> Chttp2ServerAddPort(Server* server, const char* addr,
+                                        const ChannelArgs& args);
+
 }  // namespace grpc_core
 
 #endif  // GRPC_SRC_CORE_EXT_TRANSPORT_CHTTP2_SERVER_CHTTP2_SERVER_H

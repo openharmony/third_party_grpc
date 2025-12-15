@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-#include <gmock/gmock.h>
 #include <grpc/grpc.h>
 #include <grpc/grpc_security.h>
 #include <grpc/support/alloc.h>
@@ -27,10 +26,10 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/xds_server_builder.h>
-#include <gtest/gtest.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,7 +41,6 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/time/time.h"
-#include "absl/types/optional.h"
 #include "envoy/config/cluster/v3/cluster.pb.h"
 #include "envoy/config/endpoint/v3/endpoint.pb.h"
 #include "envoy/config/listener/v3/listener.pb.h"
@@ -52,13 +50,15 @@
 #include "envoy/extensions/filters/http/router/v3/router.pb.h"
 #include "envoy/extensions/filters/network/http_connection_manager/v3/http_connection_manager.pb.h"
 #include "envoy/extensions/transport_sockets/tls/v3/tls.pb.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "src/core/config/config_vars.h"
 #include "src/core/config/core_configuration.h"
+#include "src/core/credentials/transport/fake/fake_credentials.h"
+#include "src/core/credentials/transport/tls/certificate_provider_registry.h"
+#include "src/core/credentials/transport/tls/grpc_tls_certificate_provider.h"
 #include "src/core/ext/filters/http/client/http_client_filter.h"
 #include "src/core/lib/security/authorization/audit_logging.h"
-#include "src/core/lib/security/certificate_provider/certificate_provider_registry.h"
-#include "src/core/lib/security/credentials/fake/fake_credentials.h"
-#include "src/core/lib/security/credentials/tls/grpc_tls_certificate_provider.h"
 #include "src/core/util/env.h"
 #include "src/core/util/ref_counted_ptr.h"
 #include "src/core/util/string.h"
@@ -153,8 +153,8 @@ class FakeCertificateProvider final : public grpc_tls_certificate_provider {
             "No certificates available for cert_name \"", cert_name, "\""));
         distributor_->SetErrorForCert(cert_name, error, error);
       } else {
-        absl::optional<std::string> root_certificate;
-        absl::optional<grpc_core::PemKeyCertPairList> pem_key_cert_pairs;
+        std::optional<std::string> root_certificate;
+        std::optional<grpc_core::PemKeyCertPairList> pem_key_cert_pairs;
         if (root_being_watched) {
           root_certificate = it->second.root_certificate;
         }
@@ -455,8 +455,6 @@ TEST_P(XdsSecurityTest,
 }
 
 TEST_P(XdsSecurityTest, UseSystemRootCerts) {
-  grpc_core::testing::ScopedExperimentalEnvVar env1(
-      "GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS");
   grpc_core::testing::ScopedEnvVar env2("GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",
                                         kCaCertPath);
   g_fake1_cert_data_map->Set({{"", {root_cert_, identity_pair_}}});
@@ -950,7 +948,7 @@ class XdsServerSecurityTest : public XdsEnd2endTest {
       const std::vector<std::string>& expected_server_identity,
       const std::vector<std::string>& expected_client_identity,
       bool test_expects_failure = false,
-      absl::optional<grpc::StatusCode> expected_status = absl::nullopt,
+      std::optional<grpc::StatusCode> expected_status = std::nullopt,
       absl::string_view expected_error_message_regex = "") {
     LOG(INFO) << "Sending RPC";
     int num_tries = 0;
@@ -2643,7 +2641,7 @@ int main(int argc, char** argv) {
   grpc::testing::g_fake1_cert_data_map = &cert_data_map_1;
   grpc::testing::FakeCertificateProvider::CertDataMapWrapper cert_data_map_2;
   grpc::testing::g_fake2_cert_data_map = &cert_data_map_2;
-  grpc_core::CoreConfiguration::RegisterBuilder(
+  grpc_core::CoreConfiguration::RegisterEphemeralBuilder(
       [](grpc_core::CoreConfiguration::Builder* builder) {
         builder->certificate_provider_registry()
             ->RegisterCertificateProviderFactory(

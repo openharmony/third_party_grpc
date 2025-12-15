@@ -17,17 +17,17 @@
 //
 
 #include <grpc/grpc.h>
-#include <gtest/gtest.h>
 
 #include <thread>
 
 #include "absl/synchronization/notification.h"
+#include "gtest/gtest.h"
 #include "src/core/config/core_configuration.h"
+#include "src/core/credentials/transport/insecure/insecure_credentials.h"
+#include "src/core/credentials/transport/tls/grpc_tls_credentials_options.h"
+#include "src/core/credentials/transport/tls/tls_credentials.h"
+#include "src/core/credentials/transport/transport_credentials.h"
 #include "src/core/ext/transport/chttp2/server/chttp2_server.h"
-#include "src/core/lib/security/credentials/credentials.h"
-#include "src/core/lib/security/credentials/insecure/insecure_credentials.h"
-#include "src/core/lib/security/credentials/tls/grpc_tls_credentials_options.h"
-#include "src/core/lib/security/credentials/tls/tls_credentials.h"
 #include "src/core/server/server.h"
 #include "src/core/util/host_port.h"
 #include "test/core/end2end/cq_verifier.h"
@@ -83,7 +83,7 @@ class ActiveConnectionTestPeer {
         handshaking_state = nullptr;
     connection_->work_serializer_.Run(
         [&]() {
-          handshaking_state = absl::get<OrphanablePtr<
+          handshaking_state = std::get<OrphanablePtr<
               NewChttp2ServerListener::ActiveConnection::HandshakingState>>(
                                   connection_->state_)
                                   .get();
@@ -193,6 +193,11 @@ class Chttp2ServerListenerTest : public ::testing::Test {
   void TearDown() override {
     CqVerifier cqv(cq_);
     grpc_server_shutdown_and_notify(server_->c_ptr(), cq_, CqVerifier::tag(-1));
+    // In some cases, the server has a lingering connection with an established
+    // transport. In such cases, server shutdown results in the start of
+    // graceful GOAWAYs which can take a long time for a non-responsive client.
+    // grpc_server_cancel_all_calls results in immediate disconnection.
+    grpc_server_cancel_all_calls(server_->c_ptr());
     cqv.Expect(CqVerifier::tag(-1), true);
     cqv.Verify();
     server_.reset();
@@ -450,8 +455,6 @@ TEST_F(Chttp2ActiveConnectionTest, CloseAfterSettingsFrame) {
 }  // namespace grpc_core
 
 int main(int argc, char** argv) {
-  grpc_core::ForceEnableExperiment("work_serializer_dispatch", true);
-  grpc_core::ForceEnableExperiment("server_listener", true);
   grpc::testing::TestEnvironment env(&argc, argv);
   ::testing::InitGoogleTest(&argc, argv);
   grpc_init();

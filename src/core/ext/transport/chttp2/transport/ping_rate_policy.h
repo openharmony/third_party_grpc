@@ -20,12 +20,18 @@
 
 #include <iosfwd>
 #include <string>
+#include <variant>
 
-#include "absl/types/variant.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/util/time.h"
 
 namespace grpc_core {
+
+// How many pings do we allow to be inflight at any given time?
+// In older versions of gRPC this was implicitly 1.
+// With the multiping experiment we allow this to rise to 100 by default.
+// TODO(ctiller): consider making this public API
+#define GRPC_ARG_HTTP2_MAX_INFLIGHT_PINGS "grpc.http2.max_inflight_pings"
 
 class Chttp2PingRatePolicy {
  public:
@@ -49,7 +55,7 @@ class Chttp2PingRatePolicy {
     }
   };
   using RequestSendPingResult =
-      absl::variant<SendGranted, TooManyRecentPings, TooSoon>;
+      std::variant<SendGranted, TooManyRecentPings, TooSoon>;
 
   // Request that one ping be sent.
   // Returns:

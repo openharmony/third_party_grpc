@@ -38,13 +38,6 @@ git_submodule_hashes = {
 _BAZEL_SKYLIB_DEP_NAME = "bazel_skylib"
 _BAZEL_TOOLCHAINS_DEP_NAME = "bazel_toolchains"
 _BAZEL_COMPDB_DEP_NAME = "bazel_compdb"
-_TWISTED_TWISTED_DEP_NAME = "com_github_twisted_twisted"
-_YAML_PYYAML_DEP_NAME = "com_github_yaml_pyyaml"
-_TWISTED_INCREMENTAL_DEP_NAME = "com_github_twisted_incremental"
-_ZOPEFOUNDATION_ZOPE_INTERFACE_DEP_NAME = (
-    "com_github_zopefoundation_zope_interface"
-)
-_TWISTED_CONSTANTLY_DEP_NAME = "com_github_twisted_constantly"
 
 _GRPC_DEP_NAMES = [
     "platforms",
@@ -63,11 +56,6 @@ _GRPC_DEP_NAMES = [
     _BAZEL_SKYLIB_DEP_NAME,
     _BAZEL_TOOLCHAINS_DEP_NAME,
     _BAZEL_COMPDB_DEP_NAME,
-    _TWISTED_TWISTED_DEP_NAME,
-    _YAML_PYYAML_DEP_NAME,
-    _TWISTED_INCREMENTAL_DEP_NAME,
-    _ZOPEFOUNDATION_ZOPE_INTERFACE_DEP_NAME,
-    _TWISTED_CONSTANTLY_DEP_NAME,
     "bazel_features",
     "rules_proto",
     "io_bazel_rules_go",
@@ -81,6 +69,9 @@ _GRPC_DEP_NAMES = [
     "com_google_libprotobuf_mutator",
     "com_github_cncf_xds",
     "google_cloud_cpp",
+    "rules_shell",
+    "rules_java",
+    "yaml-cpp",
 ]
 
 _GRPC_BAZEL_ONLY_DEPS = [
@@ -92,11 +83,6 @@ _GRPC_BAZEL_ONLY_DEPS = [
     _BAZEL_SKYLIB_DEP_NAME,
     _BAZEL_TOOLCHAINS_DEP_NAME,
     _BAZEL_COMPDB_DEP_NAME,
-    _TWISTED_TWISTED_DEP_NAME,
-    _YAML_PYYAML_DEP_NAME,
-    _TWISTED_INCREMENTAL_DEP_NAME,
-    _ZOPEFOUNDATION_ZOPE_INTERFACE_DEP_NAME,
-    _TWISTED_CONSTANTLY_DEP_NAME,
     "bazel_features",
     "rules_proto",
     "io_bazel_rules_go",
@@ -109,6 +95,9 @@ _GRPC_BAZEL_ONLY_DEPS = [
     "com_google_googleapis",
     "com_google_libprotobuf_mutator",
     "google_cloud_cpp",
+    "rules_shell",
+    "rules_java",
+    "yaml-cpp",
 ]
 
 
@@ -176,6 +165,7 @@ build_rules = {
     "git_repository": lambda **args: eval_state.git_repository(**args),
     "grpc_python_deps": lambda: None,
     "Label": lambda a: None,
+    "repository_rule": lambda **args: lambda name: None,
 }
 exec((bazel_file), build_rules)
 grpc_dep_names_set = set(_GRPC_DEP_NAMES)
@@ -233,6 +223,7 @@ for name in _GRPC_DEP_NAMES:
         "git_repository": lambda **args: state.git_repository(**args),
         "grpc_python_deps": lambda *args, **kwargs: None,
         "Label": lambda a: None,
+        "repository_rule": lambda **args: lambda name: None,
     }
     exec((bazel_file), rules)
     assert name not in list(names_and_urls_with_overridden_name.keys())

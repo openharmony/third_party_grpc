@@ -324,6 +324,9 @@
     "_upb_Message_Realloc_dont_copy_me__upb_internal_use_only";
     "_upb_Message_Getexts_dont_copy_me__upb_internal_use_only";
     "grpc_core::ExperimentFlags::LoadFlagsAndCheck(unsigned long)";
+    "grpc_event_engine::experimental::GetDefaultEventEngine()";
+    "grpc_core::PerCpuOptions::Shards()";
+    "_upb_Message_ReserveSlot_dont_copy_me__upb_internal_use_only";
   };
   local:
     *;

@@ -81,7 +81,6 @@ struct grpc_channel_element_args {
 struct grpc_call_element_args {
   grpc_call_stack* call_stack;
   const void* server_transport_data;
-  const grpc_slice& path;
   gpr_cycle_counter start_time;  // Note: not populated in subchannel stack.
   grpc_core::Timestamp deadline;
   grpc_core::Arena* arena;
@@ -189,6 +188,15 @@ struct grpc_channel_stack {
   // should look like and this can go.
   grpc_core::ManualConstructor<std::function<void()>> on_destroy;
 
+  class ChannelStackDataSource final : public grpc_core::channelz::DataSource {
+   public:
+    using grpc_core::channelz::DataSource::DataSource;
+    ~ChannelStackDataSource() { ResetDataSource(); }
+    void AddData(grpc_core::channelz::DataSink& sink) override;
+  };
+
+  grpc_core::ManualConstructor<ChannelStackDataSource> channelz_data_source;
+
   grpc_core::ManualConstructor<
       std::shared_ptr<grpc_event_engine::experimental::EventEngine>>
       event_engine;
@@ -198,7 +206,7 @@ struct grpc_channel_stack {
   }
 
   grpc_core::ManualConstructor<
-      grpc_core::GlobalStatsPluginRegistry::StatsPluginGroup>
+      std::shared_ptr<grpc_core::GlobalStatsPluginRegistry::StatsPluginGroup>>
       stats_plugin_group;
 
   // Minimal infrastructure to act like a RefCounted thing without converting

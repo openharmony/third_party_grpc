@@ -31,6 +31,8 @@
 #include "absl/random/bit_gen_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "src/core/call/metadata.h"
+#include "src/core/call/metadata_batch.h"
 #include "src/core/ext/transport/chaotic_good/frame.h"
 #include "src/core/ext/transport/chaotic_good/frame_header.h"
 #include "src/core/ext/transport/chaotic_good/server_transport.h"
@@ -60,10 +62,9 @@
 #include "src/core/lib/slice/slice.h"
 #include "src/core/lib/slice/slice_buffer.h"
 #include "src/core/lib/transport/error_utils.h"
-#include "src/core/lib/transport/metadata.h"
-#include "src/core/lib/transport/metadata_batch.h"
 #include "src/core/lib/transport/promise_endpoint.h"
 #include "src/core/server/server.h"
+#include "src/core/telemetry/metrics.h"
 #include "src/core/util/orphanable.h"
 #include "src/core/util/ref_counted_ptr.h"
 #include "src/core/util/status_helper.h"
@@ -275,6 +276,8 @@ ChaoticGoodServerListener::ActiveConnection::HandshakingState::HandshakingState(
 
 void ChaoticGoodServerListener::ActiveConnection::HandshakingState::Start(
     std::unique_ptr<EventEngine::Endpoint> endpoint) {
+  CoreConfiguration::Get().handshaker_registry().AddHandshakers(
+      HANDSHAKER_SERVER, connection_->args(), nullptr, handshake_mgr_.get());
   handshake_mgr_->DoHandshake(
       OrphanablePtr<grpc_endpoint>(
           grpc_event_engine_endpoint_create(std::move(endpoint))),
@@ -289,27 +292,34 @@ void ChaoticGoodServerListener::ActiveConnection::HandshakingState::Start(
 auto ChaoticGoodServerListener::ActiveConnection::HandshakingState::
     EndpointReadSettingsFrame(RefCountedPtr<HandshakingState> self) {
   return TrySeq(
-      self->connection_->endpoint_.ReadSlice(FrameHeader::kFrameHeaderSize),
+      self->connection_->endpoint_.ReadSlice(TcpFrameHeader::kFrameHeaderSize),
       [self](Slice slice) {
         // Parse frame header
-        auto frame_header = FrameHeader::Parse(reinterpret_cast<const uint8_t*>(
-            GRPC_SLICE_START_PTR(slice.c_slice())));
-        if (frame_header.ok() && frame_header->type != FrameType::kSettings) {
-          frame_header = absl::InternalError("Not a settings frame");
+        auto frame_header =
+            TcpFrameHeader::Parse(reinterpret_cast<const uint8_t*>(
+                GRPC_SLICE_START_PTR(slice.c_slice())));
+        if (frame_header.ok()) {
+          if (frame_header->header.type != FrameType::kSettings) {
+            frame_header = absl::InternalError("Not a settings frame");
+          } else if (frame_header->payload_tag != 0) {
+            frame_header = absl::InternalError("Unexpected connection id");
+          } else if (frame_header->header.stream_id != 0) {
+            frame_header = absl::InternalError("Unexpected stream id");
+          }
         }
         return If(
             frame_header.ok(),
             [self, &frame_header]() {
               return TrySeq(
                   self->connection_->endpoint_.Read(
-                      frame_header->payload_length),
+                      frame_header->header.payload_length),
                   [frame_header = *frame_header,
                    self](SliceBuffer buffer) -> absl::StatusOr<bool> {
                     // Read Setting frame.
                     SettingsFrame frame;
                     // Deserialize frame from read buffer.
-                    auto status =
-                        frame.Deserialize(frame_header, std::move(buffer));
+                    auto status = frame.Deserialize(frame_header.header,
+                                                    std::move(buffer));
                     if (!status.ok()) return status;
                     if (frame.body.data_channel()) {
                       if (frame.body.connection_id().empty()) {
@@ -357,21 +367,32 @@ auto ChaoticGoodServerListener::ActiveConnection::HandshakingState::
     ControlEndpointWriteSettingsFrame(RefCountedPtr<HandshakingState> self) {
   SettingsFrame frame;
   frame.body.set_data_channel(false);
-  absl::get<ControlConnection>(self->data_)
+  std::get<ControlConnection>(self->data_)
       .config.PrepareServerOutgoingSettings(frame.body);
   SliceBuffer write_buffer;
-  frame.MakeHeader().Serialize(
-      write_buffer.AddTiny(FrameHeader::kFrameHeaderSize));
+  TcpFrameHeader{frame.MakeHeader(), 0}.Serialize(
+      write_buffer.AddTiny(TcpFrameHeader::kFrameHeaderSize));
   frame.SerializePayload(write_buffer);
   return TrySeq(
-      self->connection_->endpoint_.Write(std::move(write_buffer)), [self]() {
+      self->connection_->endpoint_.Write(std::move(write_buffer),
+                                         PromiseEndpoint::WriteArgs{}),
+      [self]() {
+        auto config =
+            std::move(std::get<ControlConnection>(self->data_).config);
+        auto& ep = self->connection_->endpoint_;
+        auto socket_node =
+            TcpFrameTransport::MakeSocketNode(self->connection_->args(), ep);
+        auto frame_transport = MakeOrphanable<TcpFrameTransport>(
+            config.MakeTcpFrameTransportOptions(), std::move(ep),
+            config.TakePendingDataEndpoints(),
+            MakeRefCounted<TransportContext>(
+                self->connection_->handshake_result_args(),
+                std::move(socket_node)));
         return self->connection_->listener_->server_->SetupTransport(
             new ChaoticGoodServerTransport(
-                self->connection_->args(),
-                std::move(self->connection_->endpoint_),
-                std::move(absl::get<ControlConnection>(self->data_).config),
-                self->connection_->listener_->data_connection_listener_),
-            nullptr, self->connection_->args(), nullptr);
+                self->connection_->handshake_result_args(),
+                std::move(frame_transport), config.MakeMessageChunker()),
+            nullptr, self->connection_->handshake_result_args());
       });
 }
 
@@ -381,15 +402,16 @@ auto ChaoticGoodServerListener::ActiveConnection::HandshakingState::
   SettingsFrame frame;
   frame.body.set_data_channel(true);
   SliceBuffer write_buffer;
-  frame.MakeHeader().Serialize(
-      write_buffer.AddTiny(FrameHeader::kFrameHeaderSize));
+  TcpFrameHeader{frame.MakeHeader(), 0}.Serialize(
+      write_buffer.AddTiny(TcpFrameHeader::kFrameHeaderSize));
   frame.SerializePayload(write_buffer);
   // ignore encoding errors: they will be logged separately already
-  return TrySeq(self->connection_->endpoint_.Write(std::move(write_buffer)),
+  return TrySeq(self->connection_->endpoint_.Write(
+                    std::move(write_buffer), PromiseEndpoint::WriteArgs{}),
                 [self]() mutable {
                   self->connection_->listener_->data_connection_listener_
                       ->FinishDataConnection(
-                          absl::get<DataConnection>(self->data_).connection_id,
+                          std::get<DataConnection>(self->data_).connection_id,
                           std::move(self->connection_->endpoint_));
                   return absl::OkStatus();
                 });
@@ -407,14 +429,15 @@ auto ChaoticGoodServerListener::ActiveConnection::HandshakingState::
 void ChaoticGoodServerListener::ActiveConnection::HandshakingState::
     OnHandshakeDone(absl::StatusOr<HandshakerArgs*> result) {
   if (!result.ok()) {
-    LOG_EVERY_N_SEC(ERROR, 5) << "Handshake failed: ", result.status();
+    connection_->listener_->LogConnectionFailure("Handshake failed",
+                                                 result.status());
     connection_->Done();
     return;
   }
   CHECK_NE(*result, nullptr);
   if ((*result)->endpoint == nullptr) {
-    LOG_EVERY_N_SEC(ERROR, 5)
-        << "Server handshake done but has empty endpoint.";
+    connection_->listener_->LogConnectionFailure(
+        "Server handshake done but has empty endpoint", std::nullopt);
     connection_->Done();
     return;
   }
@@ -427,6 +450,7 @@ void ChaoticGoodServerListener::ActiveConnection::HandshakingState::
       grpc_event_engine::experimental::ChaoticGoodExtension>(ee_endpoint.get());
   connection_->endpoint_ =
       PromiseEndpoint(std::move(ee_endpoint), SliceBuffer());
+  connection_->handshake_result_args_ = (*result)->args;
   auto activity = MakeActivity(
       [self = Ref(), chaotic_good_ext]() {
         return TrySeq(
@@ -451,8 +475,8 @@ void ChaoticGoodServerListener::ActiveConnection::HandshakingState::
       EventEngineWakeupScheduler(connection_->listener_->event_engine_),
       [self = Ref()](absl::Status status) {
         if (!status.ok()) {
-          GRPC_TRACE_LOG(chaotic_good, ERROR)
-              << "Server setting frame handling failed: " << status;
+          self->connection_->listener_->LogConnectionFailure(
+              "Chaotic Good handshake failed", status);
         }
         self->connection_->Done();
       },
@@ -475,45 +499,40 @@ void ChaoticGoodServerListener::Orphan() {
   Unref();
 };
 
-}  // namespace chaotic_good
-}  // namespace grpc_core
-
-int grpc_server_add_chaotic_good_port(grpc_server* server, const char* addr) {
-  using grpc_event_engine::experimental::EventEngine;
-  if (grpc_core::IsChaoticGoodLegacyProtocolEnabled()) {
-    return grpc_server_add_chaotic_good_legacy_port(server, addr);
+absl::StatusOr<int> AddChaoticGoodPort(Server* server, std::string addr,
+                                       const ChannelArgs& args) {
+  if (!IsChaoticGoodFramingLayerEnabled()) {
+    return chaotic_good_legacy::AddLegacyChaoticGoodPort(server, addr, args);
   }
-  grpc_core::ExecCtx exec_ctx;
-  auto* const core_server = grpc_core::Server::FromC(server);
-  const std::string parsed_addr = grpc_core::URI::PercentDecode(addr);
+  using grpc_event_engine::experimental::EventEngine;
+  const std::string parsed_addr = URI::PercentDecode(addr);
   absl::StatusOr<std::vector<EventEngine::ResolvedAddress>> results =
       std::vector<EventEngine::ResolvedAddress>();
-  if (grpc_core::IsEventEngineDnsNonClientChannelEnabled()) {
+  if (IsEventEngineDnsNonClientChannelEnabled()) {
     absl::StatusOr<std::unique_ptr<EventEngine::DNSResolver>> ee_resolver =
-        core_server->channel_args().GetObjectRef<EventEngine>()->GetDNSResolver(
+        args.GetObjectRef<EventEngine>()->GetDNSResolver(
             EventEngine::DNSResolver::ResolverOptions());
     if (!ee_resolver.ok()) {
       LOG(ERROR) << "Failed to resolve " << addr << ": "
                  << ee_resolver.status().ToString();
-      return 0;
+      return ee_resolver.status();
     }
     results = grpc_event_engine::experimental::LookupHostnameBlocking(
         ee_resolver->get(), parsed_addr, absl::StrCat(0xd20));
     if (!results.ok()) {
       LOG(ERROR) << "Failed to resolve " << addr << ": "
                  << results.status().ToString();
-      return 0;
+      return results.status();
     }
   } else {
     // TODO(yijiem): Remove this after event_engine_dns_non_client_channel
     // is fully enabled.
-    const auto resolved_or =
-        grpc_core::GetDNSResolver()->LookupHostnameBlocking(
-            parsed_addr, absl::StrCat(0xd20));
+    const auto resolved_or = GetDNSResolver()->LookupHostnameBlocking(
+        parsed_addr, absl::StrCat(0xd20));
     if (!resolved_or.ok()) {
       LOG(ERROR) << "Failed to resolve " << addr << ": "
                  << resolved_or.status().ToString();
-      return 0;
+      return resolved_or.status();
     }
     for (const auto& addr : *resolved_or) {
       results->push_back(
@@ -523,16 +542,15 @@ int grpc_server_add_chaotic_good_port(grpc_server* server, const char* addr) {
   int port_num = 0;
   std::vector<std::pair<std::string, absl::Status>> error_list;
   for (const auto& ee_addr : results.value()) {
-    auto listener = grpc_core::MakeOrphanable<
-        grpc_core::chaotic_good::ChaoticGoodServerListener>(
-        grpc_core::Server::FromC(server), core_server->channel_args());
+    auto listener =
+        MakeOrphanable<chaotic_good::ChaoticGoodServerListener>(server, args);
     std::string addr_str =
         *grpc_event_engine::experimental::ResolvedAddressToString(ee_addr);
     GRPC_TRACE_LOG(chaotic_good, INFO) << "BIND: " << addr_str;
     auto bind_result = listener->Bind(ee_addr);
     if (!bind_result.ok()) {
       error_list.push_back(
-          std::make_pair(std::move(addr_str), bind_result.status()));
+          std::pair(std::move(addr_str), bind_result.status()));
       continue;
     }
     if (port_num == 0) {
@@ -540,7 +558,7 @@ int grpc_server_add_chaotic_good_port(grpc_server* server, const char* addr) {
     } else {
       CHECK(port_num == bind_result.value());
     }
-    core_server->AddListener(std::move(listener));
+    server->AddListener(std::move(listener));
   }
   if (error_list.size() == results->size()) {
     LOG(ERROR) << "Failed to bind any address for " << addr;
@@ -556,3 +574,6 @@ int grpc_server_add_chaotic_good_port(grpc_server* server, const char* addr) {
   }
   return port_num;
 }
+
+}  // namespace chaotic_good
+}  // namespace grpc_core

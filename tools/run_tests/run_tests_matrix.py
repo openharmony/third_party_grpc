@@ -36,6 +36,9 @@ _CPP_RUNTESTS_TIMEOUT = 6 * 60 * 60
 # Set timeout high for ObjC for Cocoapods to install pods
 _OBJC_RUNTESTS_TIMEOUT = 4 * 60 * 60
 
+# Set higher timeout for python_windows_opt_native test
+_PYTHON_WINDOWS_RUNTESTS_TIMEOUT = 1.5 * 60 * 60
+
 # Set timeout high for Ruby for MacOS for slow xcodebuild
 _RUBY_RUNTESTS_TIMEOUT = 2 * 60 * 60
 
@@ -207,6 +210,9 @@ def _generate_jobs(
                             timeout_seconds=timeout_seconds,
                         )
                     else:
+                        if platform == "windows" and language == "python":
+                            timeout_seconds = _PYTHON_WINDOWS_RUNTESTS_TIMEOUT
+
                         job = _workspace_jobspec(
                             name=name,
                             runtests_args=runtests_args,
@@ -365,7 +371,7 @@ def _create_portability_test_jobs(
         "gcc12_openssl309",
         "gcc14",
         "gcc_musl",
-        "clang7",
+        "clang11",
         "clang19",
     ]:
         test_jobs += _generate_jobs(

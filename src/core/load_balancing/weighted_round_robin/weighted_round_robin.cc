@@ -24,10 +24,12 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -40,8 +42,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "src/core/config/core_configuration.h"
 #include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/debug/trace.h"
@@ -68,6 +68,7 @@
 #include "src/core/util/orphanable.h"
 #include "src/core/util/ref_counted.h"
 #include "src/core/util/ref_counted_ptr.h"
+#include "src/core/util/shared_bit_gen.h"
 #include "src/core/util/sync.h"
 #include "src/core/util/time.h"
 #include "src/core/util/validation_errors.h"
@@ -267,7 +268,7 @@ class WeightedRoundRobin final : public LoadBalancingPolicy {
           const ChannelArgs& args) override;
 
       // Called when the child policy reports a connectivity state update.
-      void OnStateUpdate(absl::optional<grpc_connectivity_state> old_state,
+      void OnStateUpdate(std::optional<grpc_connectivity_state> old_state,
                          grpc_connectivity_state new_state,
                          const absl::Status& status) override;
 
@@ -300,7 +301,7 @@ class WeightedRoundRobin final : public LoadBalancingPolicy {
     // Updates the counters of children in each state when a
     // child transitions from old_state to new_state.
     void UpdateStateCountersLocked(
-        absl::optional<grpc_connectivity_state> old_state,
+        std::optional<grpc_connectivity_state> old_state,
         grpc_connectivity_state new_state);
 
     // Ensures that the right child list is used and then updates
@@ -383,7 +384,7 @@ class WeightedRoundRobin final : public LoadBalancingPolicy {
         ABSL_GUARDED_BY(&scheduler_mu_);
 
     Mutex timer_mu_ ABSL_ACQUIRED_BEFORE(&scheduler_mu_);
-    absl::optional<grpc_event_engine::experimental::EventEngine::TaskHandle>
+    std::optional<grpc_event_engine::experimental::EventEngine::TaskHandle>
         timer_handle_ ABSL_GUARDED_BY(&timer_mu_);
 
     // Used when falling back to RR.
@@ -415,10 +416,9 @@ class WeightedRoundRobin final : public LoadBalancingPolicy {
 
   bool shutdown_ = false;
 
-  absl::BitGen bit_gen_;
-
   // Accessed by picker.
-  std::atomic<uint32_t> scheduler_state_{absl::Uniform<uint32_t>(bit_gen_)};
+  std::atomic<uint32_t> scheduler_state_{
+      absl::Uniform<uint32_t>(SharedBitGen())};
 };
 
 //
@@ -539,7 +539,7 @@ WeightedRoundRobin::Picker::Picker(RefCountedPtr<WeightedRoundRobin> wrr,
                                    WrrEndpointList* endpoint_list)
     : wrr_(std::move(wrr)),
       config_(wrr_->config_),
-      last_picked_index_(absl::Uniform<size_t>(wrr_->bit_gen_)) {
+      last_picked_index_(absl::Uniform<size_t>(SharedBitGen())) {
   for (auto& endpoint : endpoint_list->endpoints()) {
     auto* ep = static_cast<WrrEndpointList::WrrEndpoint*>(endpoint.get());
     if (ep->connectivity_state() == GRPC_CHANNEL_READY) {
@@ -582,7 +582,7 @@ WeightedRoundRobin::PickResult WeightedRoundRobin::Picker::Pick(PickArgs args) {
   auto result = endpoint_info.picker->Pick(args);
   // Collect per-call utilization data if needed.
   if (!config_->enable_oob_load_report()) {
-    auto* complete = absl::get_if<PickResult::Complete>(&result.result);
+    auto* complete = std::get_if<PickResult::Complete>(&result.result);
     if (complete != nullptr) {
       complete->subchannel_call_tracker =
           std::make_unique<SubchannelCallTracker>(
@@ -667,7 +667,6 @@ void WeightedRoundRobin::Picker::BuildSchedulerAndStartTimerLocked() {
       config_->weight_update_period(),
       [self = WeakRefAsSubclass<Picker>(),
        work_serializer = wrr_->work_serializer()]() mutable {
-        ApplicationCallbackExecCtx callback_exec_ctx;
         ExecCtx exec_ctx;
         {
           MutexLock lock(&self->timer_mu_);
@@ -677,11 +676,6 @@ void WeightedRoundRobin::Picker::BuildSchedulerAndStartTimerLocked() {
                 << "] timer fired";
             self->BuildSchedulerAndStartTimerLocked();
           }
-        }
-        if (!IsWorkSerializerDispatchEnabled()) {
-          // Release the picker ref inside the WorkSerializer.
-          work_serializer->Run([self = std::move(self)]() {}, DEBUG_LOCATION);
-          return;
         }
         self.reset();
       });
@@ -852,7 +846,7 @@ WeightedRoundRobin::WrrEndpointList::WrrEndpoint::CreateSubchannel(
 }
 
 void WeightedRoundRobin::WrrEndpointList::WrrEndpoint::OnStateUpdate(
-    absl::optional<grpc_connectivity_state> old_state,
+    std::optional<grpc_connectivity_state> old_state,
     grpc_connectivity_state new_state, const absl::Status& status) {
   auto* wrr_endpoint_list = endpoint_list<WrrEndpointList>();
   auto* wrr = policy<WeightedRoundRobin>();
@@ -899,7 +893,7 @@ void WeightedRoundRobin::WrrEndpointList::WrrEndpoint::OnStateUpdate(
 //
 
 void WeightedRoundRobin::WrrEndpointList::UpdateStateCountersLocked(
-    absl::optional<grpc_connectivity_state> old_state,
+    std::optional<grpc_connectivity_state> old_state,
     grpc_connectivity_state new_state) {
   // We treat IDLE the same as CONNECTING, since it will immediately
   // transition into that state anyway.
