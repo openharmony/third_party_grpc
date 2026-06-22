@@ -34,7 +34,9 @@
 #include "src/core/client_channel/backup_poller.h"
 #include "src/core/config/core_configuration.h"
 #include "src/core/credentials/transport/security_connector.h"
+#ifndef GRPC_PROFILER_MINIMAL
 #include "src/core/filter/auth/auth_filters.h"
+#endif
 #include "src/core/lib/debug/trace.h"
 #include "src/core/lib/event_engine/posix_engine/timer_manager.h"
 #include "src/core/lib/experiments/config.h"
@@ -42,7 +44,9 @@
 #include "src/core/lib/iomgr/exec_ctx.h"
 #include "src/core/lib/iomgr/iomgr.h"
 #include "src/core/lib/iomgr/timer_manager.h"
+#ifndef GRPC_PROFILER_MINIMAL
 #include "src/core/lib/security/authorization/grpc_server_authz_filter.h"
+#endif
 #include "src/core/lib/surface/channel_stack_type.h"
 #include "src/core/lib/surface/init_internally.h"
 #include "src/core/util/fork.h"
@@ -71,6 +75,7 @@ static bool g_shutting_down ABSL_GUARDED_BY(g_init_mu) = false;
 
 namespace grpc_core {
 void RegisterSecurityFilters(CoreConfiguration::Builder* builder) {
+#ifndef GRPC_PROFILER_MINIMAL
   if (IsCallv3ClientAuthFilterEnabled()) {
     builder->channel_init()
         ->RegisterFilter<ClientAuthFilter>(GRPC_CLIENT_SUBCHANNEL)
@@ -93,6 +98,9 @@ void RegisterSecurityFilters(CoreConfiguration::Builder* builder) {
       ->RegisterFilter<GrpcServerAuthzFilter>(GRPC_SERVER_CHANNEL)
       .IfHasChannelArg(GRPC_ARG_AUTHORIZATION_POLICY_PROVIDER)
       .After<ServerAuthFilter>();
+#else
+  (void)builder;
+#endif
 }
 }  // namespace grpc_core
 

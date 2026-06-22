@@ -8,6 +8,7 @@
     "grpc::g_glip";
     "grpc::CreateChannel(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::shared_ptr<grpc::ChannelCredentials> const&)";
     "grpc::EnableDefaultHealthCheckService(bool)";
+    "grpc::GetGlobalCallbackHook()";
     "grpc::ServerContextBase::peer() const";
     "grpc::Status::OK";
     "grpc::ServerBuilder::ServerBuilder()";
