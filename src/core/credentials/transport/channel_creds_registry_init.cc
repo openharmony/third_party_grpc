@@ -32,11 +32,14 @@
 #include "src/core/config/core_configuration.h"
 #include "src/core/credentials/call/call_credentials.h"
 #include "src/core/credentials/transport/channel_creds_registry.h"
+#include "src/core/credentials/transport/insecure/insecure_credentials.h"
+#ifndef GRPC_PROFILER_MINIMAL
 #include "src/core/credentials/transport/fake/fake_credentials.h"
 #include "src/core/credentials/transport/google_default/google_default_credentials.h"  // IWYU pragma: keep
 #include "src/core/credentials/transport/tls/grpc_tls_certificate_provider.h"
 #include "src/core/credentials/transport/tls/grpc_tls_credentials_options.h"
 #include "src/core/credentials/transport/tls/tls_credentials.h"
+#endif
 #include "src/core/util/json/json.h"
 #include "src/core/util/json/json_args.h"
 #include "src/core/util/json/json_object_loader.h"
@@ -46,6 +49,7 @@
 
 namespace grpc_core {
 
+#ifndef GRPC_PROFILER_MINIMAL
 class GoogleDefaultChannelCredsFactory : public ChannelCredsFactory<> {
  public:
   absl::string_view type() const override { return Type(); }
@@ -180,6 +184,7 @@ class TlsChannelCredsFactory : public ChannelCredsFactory<> {
 };
 
 constexpr Duration TlsChannelCredsFactory::TlsConfig::kDefaultRefreshInterval;
+#endif
 
 class InsecureChannelCredsFactory : public ChannelCredsFactory<> {
  public:
@@ -206,6 +211,7 @@ class InsecureChannelCredsFactory : public ChannelCredsFactory<> {
   static absl::string_view Type() { return "insecure"; }
 };
 
+#ifndef GRPC_PROFILER_MINIMAL
 class FakeChannelCredsFactory : public ChannelCredsFactory<> {
  public:
   absl::string_view type() const override { return Type(); }
@@ -230,16 +236,21 @@ class FakeChannelCredsFactory : public ChannelCredsFactory<> {
 
   static absl::string_view Type() { return "fake"; }
 };
+#endif
 
 void RegisterChannelDefaultCreds(CoreConfiguration::Builder* builder) {
+#ifndef GRPC_PROFILER_MINIMAL
   builder->channel_creds_registry()->RegisterChannelCredsFactory(
       std::make_unique<GoogleDefaultChannelCredsFactory>());
   builder->channel_creds_registry()->RegisterChannelCredsFactory(
       std::make_unique<TlsChannelCredsFactory>());
+#endif
   builder->channel_creds_registry()->RegisterChannelCredsFactory(
       std::make_unique<InsecureChannelCredsFactory>());
+#ifndef GRPC_PROFILER_MINIMAL
   builder->channel_creds_registry()->RegisterChannelCredsFactory(
       std::make_unique<FakeChannelCredsFactory>());
+#endif
 }
 
 }  // namespace grpc_core

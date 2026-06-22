@@ -17,6 +17,12 @@ THIRDPARTY_GRPC_PART_NAME = "grpc"
 
 GRPC_DIR = rebase_path("//third_party/grpc")
 
+declare_args() {
+  grpc_enable_profiler_minimal = true
+}
+
+grpc_profiler_minimal = grpc_enable_profiler_minimal && !is_asan && !is_debug
+
 config("pulbic_grpc_config") {
   include_dirs = [
     "${GRPC_DIR}/",
@@ -48,6 +54,12 @@ config("private_grpc_config") {
 
   ldflags = [ "-Wl,--lto-O0" ]
   defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
+  if (grpc_profiler_minimal) {
+    defines += [
+      "GRPC_NO_XDS",
+      "GRPC_PROFILER_MINIMAL",
+    ]
+  }
 }
 
 ohos_shared_library("address_sorting") {
@@ -58,6 +70,9 @@ ohos_shared_library("address_sorting") {
   ]
   include_dirs = [ "${GRPC_DIR}/third_party/address_sorting/include" ]
   cflags = [ "-std=c99" ]
+  if (!is_asan && !is_debug) {
+    version_script = "libaddress_sorting.map"
+  }
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
   part_name = "${THIRDPARTY_GRPC_PART_NAME}"
@@ -249,6 +264,9 @@ ohos_shared_library("gpr") {
     "${GRPC_DIR}/third_party/upb",
   ]
 
+  if (!is_asan && !is_debug) {
+    version_script = "libgpr.map"
+  }
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
   part_name = "${THIRDPARTY_GRPC_PART_NAME}"
@@ -1091,6 +1109,79 @@ ohos_shared_library("grpc") {
     "${GRPC_DIR}/third_party/upb/upb/mem/arena.c",
     "${GRPC_DIR}/third_party/utf8_range/utf8_range.c",
   ]
+  if (grpc_profiler_minimal) {
+    sources -= filter_include(sources, [
+                               "${GRPC_DIR}/src/core/credentials/call/*",
+                               "${GRPC_DIR}/src/core/credentials/call/*/*",
+                               "${GRPC_DIR}/src/core/credentials/call/*/*/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/alts/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/composite/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/fake/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/google_default/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/local/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/ssl/*",
+                               "${GRPC_DIR}/src/core/credentials/transport/tls/grpc_tls_*",
+                               "${GRPC_DIR}/src/core/credentials/transport/tls/load_system_roots_*",
+                               "${GRPC_DIR}/src/core/credentials/transport/tls/ssl_utils.cc",
+                               "${GRPC_DIR}/src/core/credentials/transport/tls/tls_*",
+                               "${GRPC_DIR}/src/core/credentials/transport/xds/*",
+                               "${GRPC_DIR}/src/core/ext/filters/backend_metrics/*",
+                               "${GRPC_DIR}/src/core/ext/filters/fault_injection/*",
+                               "${GRPC_DIR}/src/core/ext/filters/gcp_authentication/*",
+                               "${GRPC_DIR}/src/core/ext/filters/rbac/*",
+                               "${GRPC_DIR}/src/core/ext/filters/stateful_session/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/envoy/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/envoy/*/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/envoy/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/envoy/*/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/envoy/*/*/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/xds/annotations/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/xds/core/*",
+                               "${GRPC_DIR}/src/core/ext/upb-gen/xds/type/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/envoy/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/envoy/*/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/envoy/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/envoy/*/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/envoy/*/*/*/*/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/xds/annotations/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/xds/core/*",
+                               "${GRPC_DIR}/src/core/ext/upbdefs-gen/xds/type/*",
+                               "${GRPC_DIR}/src/core/filter/auth/*",
+                               "${GRPC_DIR}/src/core/handshaker/http_connect/*",
+                               "${GRPC_DIR}/src/core/lib/security/authorization/*",
+                               "${GRPC_DIR}/src/core/load_balancing/grpclb/client_load_reporting_filter.cc",
+                               "${GRPC_DIR}/src/core/load_balancing/grpclb/grpclb.cc",
+                               "${GRPC_DIR}/src/core/load_balancing/grpclb/grpclb_client_stats.cc",
+                               "${GRPC_DIR}/src/core/load_balancing/grpclb/load_balancer_api.cc",
+                               "${GRPC_DIR}/src/core/load_balancing/oob_backend_metric.cc",
+                               "${GRPC_DIR}/src/core/load_balancing/outlier_detection/*",
+                               "${GRPC_DIR}/src/core/load_balancing/priority/*",
+                               "${GRPC_DIR}/src/core/load_balancing/ring_hash/*",
+                               "${GRPC_DIR}/src/core/load_balancing/rls/*",
+                               "${GRPC_DIR}/src/core/load_balancing/round_robin/*",
+                               "${GRPC_DIR}/src/core/load_balancing/weighted_round_robin/*",
+                               "${GRPC_DIR}/src/core/load_balancing/weighted_target/*",
+                               "${GRPC_DIR}/src/core/load_balancing/xds/*",
+                               "${GRPC_DIR}/src/core/resolver/google_c2p/*",
+                               "${GRPC_DIR}/src/core/resolver/xds/*",
+                               "${GRPC_DIR}/src/core/server/xds_*",
+                               "${GRPC_DIR}/src/core/tsi/alts/*",
+                               "${GRPC_DIR}/src/core/tsi/alts/*/*",
+                               "${GRPC_DIR}/src/core/tsi/ssl/*",
+                               "${GRPC_DIR}/src/core/tsi/ssl/*/*",
+                               "${GRPC_DIR}/src/core/tsi/fake_transport_security.cc",
+                               "${GRPC_DIR}/src/core/tsi/ssl_transport_security.cc",
+                               "${GRPC_DIR}/src/core/tsi/ssl_transport_security_utils.cc",
+                               "${GRPC_DIR}/src/core/util/gcp_metadata_query.cc",
+                               "${GRPC_DIR}/src/core/util/http_client/httpcli_security_connector.cc",
+                               "${GRPC_DIR}/src/core/util/matchers.cc",
+                               "${GRPC_DIR}/src/core/xds/*",
+                               "${GRPC_DIR}/src/core/xds/*/*",
+                             ])
+    sources += [
+      "${GRPC_DIR}/src/core/lib/security/authorization/authorization_policy_provider_vtable.cc",
+    ]
+  }
   deps = [
     ":address_sorting",
     ":gpr",
@@ -1118,6 +1209,13 @@ ohos_shared_library("grpc") {
     "re2:re2",
     "zlib:libz",
   ]
+  if (grpc_profiler_minimal) {
+    external_deps -= [
+      "openssl:libcrypto_shared",
+      "openssl:libssl_shared",
+      "re2:re2",
+    ]
+  }
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   include_dirs = [
@@ -1188,6 +1286,21 @@ ohos_source_set("grpcpp") {
     "${GRPC_DIR}/src/cpp/util/string_ref.cc",
     "${GRPC_DIR}/src/cpp/util/time_cc.cc",
   ]
+  if (grpc_profiler_minimal) {
+    sources -= filter_include(sources, [
+                               "${GRPC_DIR}/src/cpp/client/secure_credentials.cc",
+                               "${GRPC_DIR}/src/cpp/client/xds_credentials.cc",
+                               "${GRPC_DIR}/src/cpp/common/auth_property_iterator.cc",
+                               "${GRPC_DIR}/src/cpp/common/secure_auth_context.cc",
+                               "${GRPC_DIR}/src/cpp/common/secure_create_auth_context.cc",
+                               "${GRPC_DIR}/src/cpp/common/tls_certificate_provider.cc",
+                               "${GRPC_DIR}/src/cpp/common/tls_certificate_verifier.cc",
+                               "${GRPC_DIR}/src/cpp/common/tls_credentials_options.cc",
+                               "${GRPC_DIR}/src/cpp/server/secure_server_credentials.cc",
+                               "${GRPC_DIR}/src/cpp/server/xds_server_builder.cc",
+                               "${GRPC_DIR}/src/cpp/server/xds_server_credentials.cc",
+                             ])
+  }
   deps = [
     ":address_sorting",
     ":gpr",
@@ -1200,6 +1313,12 @@ ohos_source_set("grpcpp") {
     "openssl:libssl_shared",
     "protobuf:protobuf_lite",
   ]
+  if (grpc_profiler_minimal) {
+    external_deps -= [
+      "openssl:libcrypto_shared",
+      "openssl:libssl_shared",
+    ]
+  }
   public_configs = [ ":pulbic_grpc_config" ]
   configs = [ ":private_grpc_config" ]
   include_dirs = [
@@ -1230,6 +1349,9 @@ ohos_shared_library("grpcxx") {
     "abseil-cpp:absl_time",
     "abseil-cpp:absl_time_zone",
   ]
+  if (!is_asan && !is_debug) {
+    version_script = "libgrpcxx.map"
+  }
   install_enable = true
   subsystem_name = "${THIRDPARTY_GRPC_SUBSYS_NAME}"
   part_name = "${THIRDPARTY_GRPC_PART_NAME}"

@@ -1,0 +1,14 @@
+{
+  global:
+    grpc_absl_log*;
+    grpc_gethostname;
+    gpr_*;
+  extern "C++" {
+    gpr_*;
+    grpc_*;
+    grpc_core::*;
+    grpc_event_engine::*;
+  };
+  local:
+    *;
+};
