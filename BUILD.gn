@@ -1207,7 +1207,7 @@ ohos_shared_library("grpc") {
     "openssl:libcrypto_shared",
     "openssl:libssl_shared",
     "re2:re2",
-    "zlib:libz",
+    "zlib:shared_libz",
   ]
   if (grpc_profiler_minimal) {
     external_deps -= [
